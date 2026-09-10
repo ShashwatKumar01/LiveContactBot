@@ -134,9 +134,12 @@ class RelayService:
             return False
 
         bot_id = bot_doc["bot_id"]
+        reply_id = message.reply_to_message.message_id
         mapping = await self._msg_map_repo.find_by_admin_msg(
-            bot_id, message.chat.id, message.reply_to_message.message_id
+            bot_id, message.chat.id, reply_id
         )
+        if not mapping:
+            mapping = await self._msg_map_repo.find_by_admin_msg_id(bot_id, reply_id)
         if not mapping:
             return False
 

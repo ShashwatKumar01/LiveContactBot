@@ -19,8 +19,7 @@ MASTER_WELCOME = (
     "/addbot — connect a new bot\n"
     "/mybots — manage your bots\n"
     "/pro — view plan & upgrade to Premium\n"
-    "/help — help & FAQ\n"
-    "/lang — change language"
+    "/help — help & FAQ"
 )
 
 SUPPORTED_CONTENT_TYPES = {
@@ -44,13 +43,6 @@ DEFAULT_LOCALES = {
         "start": DEFAULT_START_MESSAGE,
         "received": DEFAULT_RECEIVED_MESSAGE,
         "reply_sent": DEFAULT_REPLY_SENT_MESSAGE,
-    },
-    "hi": {
-        "start": (
-            "👋 <b>स्वागत है!</b>\n\n"
-            "मुझे संदेश भेजें और मैं इसे एडमिन को भेज दूंगा।"
-        ),
-        "received": "✅ आपका संदेश एडमिन को भेज दिया गया है।",
-        "reply_sent": "✅ जवाब भेज दिया गया।",
+        "auto_reply": "",
     },
 }

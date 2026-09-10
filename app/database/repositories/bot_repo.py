@@ -30,7 +30,10 @@ class BotRepository:
             "anonymous": False,
             "notify_received": False,
             "notify_reply_sent": False,
-            "locales": DEFAULT_LOCALES.copy(),
+            "auto_reply_enabled": False,
+            "auto_reply_text": "",
+            "auto_reply_cooldown_seconds": 3600,
+            "locales": {"en": DEFAULT_LOCALES["en"].copy()},
             "default_locale": "en",
             "stats": {
                 "incoming_messages": 0,

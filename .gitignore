@@ -1,3 +1,6 @@
+backups/
+*.dump
+
 .env
 .env.*
 !.env.example

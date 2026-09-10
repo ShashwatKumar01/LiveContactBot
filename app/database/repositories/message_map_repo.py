@@ -35,6 +35,15 @@ class MessageMapRepository:
             {"bot_id": bot_id, "admin_chat_id": admin_chat_id, "admin_msg_id": admin_msg_id}
         )
 
+    async def find_by_admin_msg_id(self, bot_id: int, admin_msg_id: int) -> dict | None:
+        return await self._col.find_one(
+            {
+                "bot_id": bot_id,
+                "admin_msg_id": admin_msg_id,
+                "direction": {"$in": ["user_to_admin", "header"]},
+            }
+        )
+
     async def find_by_user_msg(
         self, bot_id: int, user_id: int, user_msg_id: int
     ) -> dict | None:

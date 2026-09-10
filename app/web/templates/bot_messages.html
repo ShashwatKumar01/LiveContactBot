@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block nav %}
+<nav>
+  <span class="brand">ContactBot Admin</span>
+  <a href="/admin">Dashboard</a>
+  <a href="/admin/owners">Owners</a>
+  <a href="/admin/bots">Bots</a>
+  <a href="/admin/messages" class="active">Messages</a>
+  <a href="/admin/premium">Premium</a>
+  <a href="/admin/broadcast">Broadcast</a>
+  <a href="/admin/settings">Settings</a>
+  <a href="/admin/logout">Logout</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>@{{ bot.username }} — messages</h1>
+<p style="color:var(--muted);font-size:14px;margin-bottom:16px;">
+  Bot ID <code>{{ bot.bot_id }}</code> · Owner <code>{{ bot.owner_id }}</code> ·
+  Status <span class="badge {% if bot.status == 'active' %}badge-green{% else %}badge-red{% endif %}">{{ bot.status }}</span>
+</p>
+<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-bottom:24px;">
+  <div class="card"><div class="label">Default language</div><div class="value" style="font-size:20px;">{{ bot.default_locale or 'en' }}</div></div>
+  <div class="card"><div class="label">“Sent to admin” notice</div><div class="value" style="font-size:20px;">{{ 'On' if bot.notify_received else 'Off' }}</div></div>
+  <div class="card"><div class="label">“Reply sent” notice</div><div class="value" style="font-size:20px;">{{ 'On' if bot.notify_reply_sent else 'Off' }}</div></div>
+  <div class="card"><div class="label">Promo on /start</div><div class="value" style="font-size:16px;">{{ promo_note }}</div></div>
+</div>
+
+{% for lang, strings in locales.items() %}
+<div class="card" style="margin-bottom:20px;">
+  <h2 style="color:var(--text);font-size:16px;margin-bottom:12px;">{{ lang.upper() }}{% if lang == (bot.default_locale or 'en') %} — default{% endif %}</h2>
+  <div class="label">Welcome (/start){% if lang == (bot.default_locale or 'en') and show_promo %} + promo footer{% endif %}</div>
+  <pre class="msg-preview">{{ strings.start }}</pre>
+  {% if lang == (bot.default_locale or 'en') and show_promo and promo_footer %}
+  <div class="label" style="margin-top:8px;">Appended promo (Free plan)</div>
+  <pre class="msg-preview">{{ promo_footer }}</pre>
+  {% endif %}
+  <div class="label" style="margin-top:12px;">“Sent to admin” auto-reply</div>
+  <pre class="msg-preview">{{ strings.received }}</pre>
+  <div class="label" style="margin-top:12px;">“Reply sent” auto-reply</div>
+  <pre class="msg-preview">{{ strings.reply_sent }}</pre>
+</div>
+{% endfor %}
+
+<a href="/admin/messages" class="btn btn-outline">« All messages</a>
+<a href="/admin/bots" class="btn btn-outline">Bots list</a>
+{% endblock %}

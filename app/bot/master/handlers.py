@@ -10,12 +10,13 @@ from app.bot.master.keyboards import (
     main_menu_kb,
     bots_list_kb,
     bot_settings_kb,
+    bot_texts_kb,
+    auto_cooldown_kb,
     confirm_disconnect_kb,
-    locales_kb,
-    locale_lang_kb,
-    locale_autoreply_kb,
 )
-from app.bot.master.states import AddBotStates, EditLocaleStates, SetGroupStates
+from app.bot.master.states import AddBotStates, EditBotTextStates, SetGroupStates
+from app.bot.master.broadcast_handlers import create_broadcast_router
+from app.bot.shared.broadcast_stop import create_broadcast_stop_router
 from app.core.config import Settings
 from app.core.constants import MASTER_WELCOME
 from app.core.crypto import encrypt_token
@@ -54,7 +55,7 @@ def create_master_router() -> Router:
             "• All media types supported\n"
             "• Connect a group for team replies\n"
             "• Broadcast to all users\n"
-            "• Multi-language support\n"
+            "• Auto-reply with cooldown\n"
             "• Anonymous mode\n"
             "• Statistics"
         )
@@ -455,8 +456,8 @@ def create_master_router() -> Router:
         )
         await state.clear()
 
-    @router.callback_query(F.data.startswith("locales:"))
-    async def cb_locales(callback: CallbackQuery, bot_repo: BotRepository) -> None:
+    @router.callback_query(F.data.startswith("bot_texts:"))
+    async def cb_bot_texts(callback: CallbackQuery, bot_repo: BotRepository) -> None:
         if not callback.from_user or not callback.data:
             return
         bot_id = int(callback.data.split(":")[1])
@@ -464,85 +465,41 @@ def create_master_router() -> Router:
         if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
             await callback.answer("Not found.", show_alert=True)
             return
-        locales = bot_doc.get("locales", {})
-        await callback.message.edit_text(
-            f"🌐 <b>Localizations for @{bot_doc.get('username')}</b>\n\n"
-            "Select a language to view strings.\n"
-            "To edit, send: <code>/setlocale en start Your new message</code>",
-            reply_markup=locales_kb(bot_id, locales),
+        await safe_edit_text(
+            callback.message,
+            f"📝 <b>Texts for @{bot_doc.get('username')}</b>\n\n"
+            "English only. Auto-reply is sent on user messages (not /start) when enabled.",
+            reply_markup=bot_texts_kb(bot_id),
         )
         await callback.answer()
 
-    @router.callback_query(F.data.startswith("locale_view:"))
-    async def cb_locale_view(callback: CallbackQuery, bot_repo: BotRepository) -> None:
+    @router.callback_query(F.data.startswith("text_edit:"))
+    async def cb_text_edit(callback: CallbackQuery, state: FSMContext, bot_repo: BotRepository) -> None:
         if not callback.from_user or not callback.data:
             return
         parts = callback.data.split(":")
-        bot_id, lang = int(parts[1]), parts[2]
-        bot_doc = await bot_repo.get_by_id(bot_id)
-        if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
-            await callback.answer("Not found.", show_alert=True)
-            return
-        default = bot_doc.get("default_locale", "en")
-        is_default = lang == default
-        header = f"Here it is: <b>{lang.upper()}</b>."
-        if is_default:
-            header += (
-                "\n\nYou can change the welcome text or auto-replies below.\n"
-                "<i>Used by default.</i> This is what users see on /start."
-            )
-        else:
-            header += "\n\nEdit strings for this language below."
-        await callback.message.edit_text(
-            header,
-            reply_markup=locale_lang_kb(bot_id, lang, bot_doc),
-        )
-        await callback.answer()
-
-    @router.callback_query(F.data.startswith("locale_autoreply:"))
-    async def cb_locale_autoreply(callback: CallbackQuery, bot_repo: BotRepository) -> None:
-        if not callback.from_user or not callback.data:
-            return
-        parts = callback.data.split(":")
-        bot_id, lang = int(parts[1]), parts[2]
-        bot_doc = await bot_repo.get_by_id(bot_id)
-        if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
-            await callback.answer("Not found.", show_alert=True)
-            return
-        await callback.message.edit_text(
-            f"<b>Auto-reply texts ({lang.upper()})</b>\n\n"
-            "These are sent only when the matching notice is <b>On</b> in bot settings.",
-            reply_markup=locale_autoreply_kb(bot_id, lang),
-        )
-        await callback.answer()
-
-    @router.callback_query(F.data.startswith("locale_edit:"))
-    async def cb_locale_edit(callback: CallbackQuery, state: FSMContext, bot_repo: BotRepository) -> None:
-        if not callback.from_user or not callback.data:
-            return
-        parts = callback.data.split(":")
-        bot_id, lang, key = int(parts[1]), parts[2], parts[3]
+        bot_id, key = int(parts[1]), parts[2]
         bot_doc = await bot_repo.get_by_id(bot_id)
         if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
             await callback.answer("Not found.", show_alert=True)
             return
         labels = {
             "start": "welcome /start text",
-            "received": "“sent to admin” auto-reply",
-            "reply_sent": "“reply sent” auto-reply",
+            "auto_reply": "auto-reply message (when Auto-reply is On)",
+            "received": "“sent to admin” notice text",
+            "reply_sent": "“reply sent” notice text",
         }
-        await state.set_state(EditLocaleStates.waiting_for_locale_value)
-        await state.update_data(bot_id=bot_id, lang=lang, locale_key=key)
+        await state.set_state(EditBotTextStates.waiting_for_value)
+        await state.update_data(bot_id=bot_id, text_key=key)
         await callback.message.answer(
-            f"Send the new <b>{labels.get(key, key)}</b> for <b>{lang.upper()}</b>.\n"
-            "HTML formatting is supported.\n"
-            "Variables: <code>${firstName}</code> <code>${lastName}</code> <code>${username}</code>\n\n"
-            "Send /cancel to abort."
+            f"Send the new <b>{labels.get(key, key)}</b>.\n"
+            "HTML supported. Variables: <code>${firstName}</code> <code>${username}</code>\n"
+            "/cancel to abort."
         )
         await callback.answer()
 
-    @router.message(EditLocaleStates.waiting_for_locale_value)
-    async def process_locale_edit_value(
+    @router.message(EditBotTextStates.waiting_for_value)
+    async def process_text_edit(
         message: Message,
         state: FSMContext,
         bot_repo: BotRepository,
@@ -556,60 +513,31 @@ def create_master_router() -> Router:
             return
         data = await state.get_data()
         bot_id = data.get("bot_id")
-        lang = data.get("lang")
-        key = data.get("locale_key")
-        if not bot_id or not lang or not key:
+        key = data.get("text_key")
+        if not bot_id or not key:
             await state.clear()
             return
         bot_doc = await bot_repo.get_by_id(bot_id)
         if not bot_doc or bot_doc["owner_id"] != message.from_user.id:
             await state.clear()
             return
-        locales = bot_doc.get("locales", {})
-        if lang not in locales:
-            locales[lang] = {}
-        locales[lang][key] = message.text.strip()
-        await bot_repo.update(bot_id, locales=locales)
+        value = message.text.strip()
+        if key == "auto_reply":
+            await bot_repo.update(bot_id, auto_reply_text=value)
+        else:
+            locales = bot_doc.get("locales", {})
+            if "en" not in locales:
+                locales["en"] = {}
+            locales["en"][key] = value
+            await bot_repo.update(bot_id, locales=locales)
         await bot_manager.reload_bot(bot_id)
         await state.clear()
-        await message.answer(
-            f"✅ Saved <b>{lang}.{key}</b>.",
-            reply_markup=locale_lang_kb(bot_id, lang, bot_doc),
-        )
+        await message.answer("✅ Saved.", reply_markup=bot_texts_kb(bot_id))
 
-    @router.message(Command("setlocale"))
-    async def cmd_setlocale(
-        message: Message, bot_repo: BotRepository, bot_manager: BotManager
+    @router.callback_query(F.data.startswith("toggle_auto_reply:"))
+    async def cb_toggle_auto_reply(
+        callback: CallbackQuery, bot_repo: BotRepository, bot_manager: BotManager
     ) -> None:
-        if not message.from_user or not message.text:
-            return
-        parts = message.text.split(maxsplit=4)
-        if len(parts) < 5:
-            await message.answer(
-                "Usage: /setlocale <bot_id> <lang> <key> <value>\n"
-                "Keys: start, received, reply_sent"
-            )
-            return
-        try:
-            bot_id = int(parts[1])
-        except ValueError:
-            await message.answer("Invalid bot_id.")
-            return
-        lang, key, value = parts[2], parts[3], parts[4]
-        bot_doc = await bot_repo.get_by_id(bot_id)
-        if not bot_doc or bot_doc["owner_id"] != message.from_user.id:
-            await message.answer("Bot not found.")
-            return
-        locales = bot_doc.get("locales", {})
-        if lang not in locales:
-            locales[lang] = {}
-        locales[lang][key] = value
-        await bot_repo.update(bot_id, locales=locales)
-        await bot_manager.reload_bot(bot_id)
-        await message.answer(f"✅ Updated {lang}.{key}")
-
-    @router.callback_query(F.data.startswith("broadcast_info:"))
-    async def cb_broadcast_info(callback: CallbackQuery, bot_repo: BotRepository) -> None:
         if not callback.from_user or not callback.data:
             return
         bot_id = int(callback.data.split(":")[1])
@@ -617,12 +545,66 @@ def create_master_router() -> Router:
         if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
             await callback.answer("Not found.", show_alert=True)
             return
-        username = bot_doc.get("username", "")
-        await callback.message.answer(
-            f"📢 <b>Broadcast for @{username}</b>\n\n"
-            f"Open a chat with @{username}, reply to any message with /broadcast "
-            "to send it to all users of that bot."
+        new_val = not bot_doc.get("auto_reply_enabled", False)
+        await bot_repo.update(bot_id, auto_reply_enabled=new_val)
+        bot_doc["auto_reply_enabled"] = new_val
+        await bot_manager.reload_bot(bot_id)
+        username = bot_doc.get("username", "unknown")
+        group_text = (
+            f"<code>{bot_doc.get('group_id')}</code>"
+            if bot_doc.get("group_id")
+            else "Not connected"
+        )
+        text = (
+            f"Here it is: <b>@{username}</b>\n\n"
+            f"What do you want to do with the bot?\n\n"
+            f"👥 Group: {group_text}"
+        )
+        await safe_edit_text(callback.message, text, reply_markup=bot_settings_kb(bot_doc))
+        await callback.answer(f"Auto-reply {'On' if new_val else 'Off'}")
+
+    @router.callback_query(F.data.startswith("auto_cd_menu:"))
+    async def cb_auto_cd_menu(callback: CallbackQuery, bot_repo: BotRepository) -> None:
+        if not callback.data:
+            return
+        bot_id = int(callback.data.split(":")[1])
+        await safe_edit_text(
+            callback.message,
+            "⏱ <b>Auto-reply cooldown</b>\n\n"
+            "Same user won't get auto-reply again until this time passes.",
+            reply_markup=auto_cooldown_kb(bot_id),
         )
         await callback.answer()
 
+    @router.callback_query(F.data.startswith("auto_cd_set:"))
+    async def cb_auto_cd_set(
+        callback: CallbackQuery, bot_repo: BotRepository, bot_manager: BotManager
+    ) -> None:
+        if not callback.from_user or not callback.data:
+            return
+        parts = callback.data.split(":")
+        bot_id, seconds = int(parts[1]), int(parts[2])
+        bot_doc = await bot_repo.get_by_id(bot_id)
+        if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
+            await callback.answer("Not found.", show_alert=True)
+            return
+        await bot_repo.update(bot_id, auto_reply_cooldown_seconds=seconds)
+        bot_doc["auto_reply_cooldown_seconds"] = seconds
+        await bot_manager.reload_bot(bot_id)
+        await callback.answer(f"Cooldown: {seconds // 60} min")
+        username = bot_doc.get("username", "unknown")
+        group_text = (
+            f"<code>{bot_doc.get('group_id')}</code>"
+            if bot_doc.get("group_id")
+            else "Not connected"
+        )
+        text = (
+            f"Here it is: <b>@{username}</b>\n\n"
+            f"What do you want to do with the bot?\n\n"
+            f"👥 Group: {group_text}"
+        )
+        await safe_edit_text(callback.message, text, reply_markup=bot_settings_kb(bot_doc))
+
+    router.include_router(create_broadcast_router())
+    router.include_router(create_broadcast_stop_router())
     return router

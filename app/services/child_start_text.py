@@ -1,14 +1,16 @@
 from app.core.constants import DEFAULT_LOCALES
 
 
-def get_locale_start(bot_doc: dict, lang: str | None) -> str:
+def get_locale_start(bot_doc: dict, lang: str | None = None) -> str:
     locales = bot_doc.get("locales", DEFAULT_LOCALES)
-    default = bot_doc.get("default_locale", "en")
-    if lang and lang in locales and locales[lang].get("start"):
-        return locales[lang]["start"]
-    if default in locales and locales[default].get("start"):
-        return locales[default]["start"]
-    return DEFAULT_LOCALES["en"]["start"]
+    en = locales.get("en") or DEFAULT_LOCALES["en"]
+    return en.get("start") or DEFAULT_LOCALES["en"]["start"]
+
+
+def get_locale_string(bot_doc: dict, key: str) -> str:
+    locales = bot_doc.get("locales", DEFAULT_LOCALES)
+    en = locales.get("en") or DEFAULT_LOCALES["en"]
+    return en.get(key) or DEFAULT_LOCALES["en"].get(key, "")
 
 
 def apply_user_template_vars(text: str, user) -> str:

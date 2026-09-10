@@ -7,6 +7,8 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from app.core.config import Settings
 from app.core.crypto import decrypt_token
 from app.database.repositories import BotRepository, BotUserRepository, BroadcastRepository, OwnerRepository
+from app.bot.master.keyboards import broadcast_stop_kb
+from app.services.broadcast_progress import format_progress_text
 from app.services.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ class BroadcastWorker:
                 await self._process_jobs()
             except Exception as e:
                 logger.error("Broadcast worker error: %s", e)
-            await asyncio.sleep(10)
+            await asyncio.sleep(3)
 
     def stop(self) -> None:
         self._running = False
@@ -57,6 +59,10 @@ class BroadcastWorker:
         if target == "all_users":
             return await self._user_repo.get_distinct_owner_user_ids()
 
+        payload = job.get("payload") or {}
+        if payload.get("type") == "multi_copy":
+            audience = payload.get("audience", "all")
+            return await self._user_repo.get_broadcast_recipient_ids(bot_id, audience)
         users = await self._user_repo.get_all_active(bot_id)
         return [u["user_id"] for u in users]
 
@@ -70,9 +76,43 @@ class BroadcastWorker:
         token = decrypt_token(bot_doc["token_encrypted"], self._settings.token_encryption_key)
         return Bot(token=token)
 
+    async def _progress_bot(self, job: dict) -> Bot:
+        if job.get("progress_via_master", True):
+            return Bot(token=self._settings.master_bot_token)
+        return await self._get_bot_for_job(job)
+
+    async def _update_progress(self, job: dict) -> None:
+        chat_id = job.get("progress_chat_id")
+        message_id = job.get("progress_message_id")
+        if not chat_id or not message_id:
+            return
+        notifier = await self._progress_bot(job)
+        try:
+            status = job.get("status", "")
+            markup = (
+                broadcast_stop_kb(job["job_id"])
+                if status in ("pending", "running")
+                else None
+            )
+            await notifier.edit_message_text(
+                format_progress_text(job),
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=markup,
+            )
+        except Exception as e:
+            logger.debug("Progress UI update skipped: %s", e)
+        finally:
+            await notifier.session.close()
+
     async def _process_job(self, job: dict) -> None:
         job_id = job["job_id"]
         bot_id = job["bot_id"]
+
+        job = await self._broadcast_repo.get_job(job_id) or job
+        if job.get("status") == "cancelled":
+            await self._update_progress(job)
+            return
 
         if job["status"] == "pending":
             user_ids = await self._resolve_recipients(job)
@@ -81,18 +121,30 @@ class BroadcastWorker:
                 job_id, status="running", total=len(user_ids)
             )
             job["total"] = len(user_ids)
+            job = await self._broadcast_repo.get_job(job_id) or job
+            await self._update_progress(job)
+
+        job = await self._broadcast_repo.get_job(job_id) or job
+        if job.get("status") == "cancelled":
+            await self._update_progress(job)
+            return
 
         try:
             bot = await self._get_bot_for_job(job)
         except ValueError:
             await self._broadcast_repo.update_job(job_id, status="failed")
+            job = await self._broadcast_repo.get_job(job_id) or job
+            await self._update_progress(job)
             return
 
         recipients = await self._broadcast_repo.get_pending_recipients(
             job_id, self._settings.broadcast_batch_size
         )
         if not recipients:
-            await self._broadcast_repo.update_job(job_id, status="completed")
+            status = "cancelled" if job.get("status") == "cancelled" else "completed"
+            await self._broadcast_repo.update_job(job_id, status=status)
+            job = await self._broadcast_repo.get_job(job_id) or job
+            await self._update_progress(job)
             await bot.session.close()
             return
 
@@ -102,19 +154,33 @@ class BroadcastWorker:
         payload = job.get("payload")
 
         for rec in recipients:
+            job = await self._broadcast_repo.get_job(job_id) or job
+            if job.get("status") == "cancelled":
+                break
             await self._rate_limiter.acquire()
             try:
+                silent = bool(payload.get("silent")) if payload else False
                 if payload and payload.get("type") == "text":
                     await bot.send_message(
                         chat_id=rec["user_id"],
                         text=payload["text"],
                         parse_mode=payload.get("parse_mode", "HTML"),
+                        disable_notification=silent,
                     )
+                elif payload and payload.get("type") == "multi_copy":
+                    for item in payload.get("messages", []):
+                        await bot.copy_message(
+                            chat_id=rec["user_id"],
+                            from_chat_id=item["chat_id"],
+                            message_id=item["message_id"],
+                            disable_notification=silent,
+                        )
                 else:
                     await bot.copy_message(
                         chat_id=rec["user_id"],
                         from_chat_id=job["source_chat_id"],
                         message_id=job["source_msg_id"],
+                        disable_notification=silent,
                     )
                 await self._broadcast_repo.mark_recipient(job_id, rec["user_id"], "sent")
                 sent += 1
@@ -130,4 +196,11 @@ class BroadcastWorker:
                 failed += 1
 
         await self._broadcast_repo.update_job(job_id, sent=sent, failed=failed)
+        job = await self._broadcast_repo.get_job(job_id) or job
+        if job.get("status") != "cancelled":
+            pending_left = await self._broadcast_repo.get_pending_recipients(job_id, limit=1)
+            if not pending_left:
+                await self._broadcast_repo.update_job(job_id, status="completed")
+                job = await self._broadcast_repo.get_job(job_id) or job
+        await self._update_progress(job)
         await bot.session.close()

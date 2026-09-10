@@ -81,6 +81,38 @@ class BroadcastRepository:
         )
         return job_id
 
+    async def create_compose_job(
+        self,
+        bot_id: int,
+        owner_id: int,
+        messages: list[dict],
+        audience: str = "all",
+        silent: bool = False,
+    ) -> str:
+        job_id = str(uuid4())
+        now = datetime.now(timezone.utc)
+        await self._jobs.insert_one(
+            {
+                "job_id": job_id,
+                "bot_id": bot_id,
+                "owner_id": owner_id,
+                "target": "bot_users",
+                "payload": {
+                    "type": "multi_copy",
+                    "messages": messages,
+                    "audience": audience,
+                    "silent": silent,
+                },
+                "status": "pending",
+                "total": 0,
+                "sent": 0,
+                "failed": 0,
+                "created_at": now,
+                "updated_at": now,
+            }
+        )
+        return job_id
+
     async def count_owner_broadcasts_today(self, owner_id: int) -> int:
         now = datetime.now(timezone.utc)
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -115,6 +147,19 @@ class BroadcastRepository:
     async def update_job(self, job_id: str, **fields) -> None:
         fields["updated_at"] = datetime.now(timezone.utc)
         await self._jobs.update_one({"job_id": job_id}, {"$set": fields})
+
+    async def cancel_job(self, job_id: str, owner_id: int | None = None) -> bool:
+        query: dict = {
+            "job_id": job_id,
+            "status": {"$in": ["pending", "running"]},
+        }
+        if owner_id is not None:
+            query["owner_id"] = owner_id
+        result = await self._jobs.update_one(
+            query,
+            {"$set": {"status": "cancelled", "updated_at": datetime.now(timezone.utc)}},
+        )
+        return result.modified_count > 0
 
     async def get_pending_recipients(self, job_id: str, limit: int = 200) -> list[dict]:
         cursor = self._recipients.find({"job_id": job_id, "status": "pending"}).limit(limit)

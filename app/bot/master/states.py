@@ -9,6 +9,9 @@ class SetGroupStates(StatesGroup):
     waiting_for_group_id = State()
 
 
-class EditLocaleStates(StatesGroup):
-    waiting_for_locale_key = State()
-    waiting_for_locale_value = State()
+class EditBotTextStates(StatesGroup):
+    waiting_for_value = State()
+
+
+class BroadcastStates(StatesGroup):
+    composing = State()

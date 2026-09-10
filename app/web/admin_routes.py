@@ -5,6 +5,7 @@ import jinja2
 import aiohttp_jinja2
 from aiohttp_jinja2 import render_template
 
+from app.core.constants import DEFAULT_LOCALES, MASTER_WELCOME
 from app.web.auth import (
     SESSION_COOKIE,
     create_session_token,
@@ -36,6 +37,8 @@ def setup_web_admin(app: web.Application) -> None:
     app.router.add_post("/admin/premium/grant", require_auth(grant_premium_form))
     app.router.add_get("/admin/settings", require_auth(settings_page))
     app.router.add_post("/admin/settings", require_auth(settings_submit))
+    app.router.add_get("/admin/messages", require_auth(messages_page))
+    app.router.add_get("/admin/bots/{bot_id}/messages", require_auth(bot_messages_page))
 
 
 async def login_page(request: web.Request) -> web.Response:
@@ -208,6 +211,62 @@ async def disable_bot(request: web.Request) -> web.Response:
     await bot_repo.admin_disable(bot_id, reason="Disabled via web admin")
     await bot_manager.stop_bot(bot_id)
     raise web.HTTPFound("/admin/bots?flash=Bot+disabled")
+
+
+async def messages_page(request: web.Request) -> web.Response:
+    app_settings_repo = request.app["app_settings_repo"]
+    bot_repo = request.app["bot_repo"]
+    master_bot = request.app.get("master_bot")
+    master_username = "ReplyDmBot"
+    if master_bot:
+        try:
+            me = await master_bot.get_me()
+            master_username = me.username or master_username
+        except Exception:
+            pass
+    bots = await bot_repo.get_all(skip=0, limit=500)
+    return render_template(
+        "messages.html",
+        request,
+        {
+            "master_username": master_username,
+            "master_welcome": MASTER_WELCOME,
+            "promo_footer": await app_settings_repo.get_child_start_promo_footer(),
+            "default_locales": DEFAULT_LOCALES,
+            "bots": bots,
+        },
+    )
+
+
+async def bot_messages_page(request: web.Request) -> web.Response:
+    bot_id = int(request.match_info["bot_id"])
+    bot_repo = request.app["bot_repo"]
+    app_settings_repo = request.app["app_settings_repo"]
+    subscription_repo = request.app["subscription_repo"]
+    bot = await bot_repo.get_by_id(bot_id)
+    if not bot:
+        raise web.HTTPNotFound()
+    owner_id = bot["owner_id"]
+    plan_id = await subscription_repo.get_owner_plan_id(owner_id)
+    show_promo = plan_id != "PREMIUM"
+    locales = bot.get("locales") or DEFAULT_LOCALES
+    merged = {}
+    for lang, defaults in DEFAULT_LOCALES.items():
+        merged[lang] = {**defaults, **locales.get(lang, {})}
+    for lang in locales:
+        if lang not in merged:
+            merged[lang] = {**DEFAULT_LOCALES.get("en", {}), **locales[lang]}
+    return render_template(
+        "bot_messages.html",
+        request,
+        {
+            "bot": bot,
+            "locales": merged,
+            "promo_footer": await app_settings_repo.get_child_start_promo_footer(),
+            "show_promo": show_promo,
+            "promo_note": "Yes (Free)" if show_promo else "No (Premium)",
+        },
+    )
 
 
 async def settings_page(request: web.Request) -> web.Response:

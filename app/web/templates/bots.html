@@ -5,6 +5,7 @@
   <a href="/admin">Dashboard</a>
   <a href="/admin/owners">Owners</a>
   <a href="/admin/bots" class="active">Bots</a>
+  <a href="/admin/messages">Messages</a>
   <a href="/admin/premium">Premium</a>
   <a href="/admin/broadcast">Broadcast</a>
   <a href="/admin/settings">Settings</a>
@@ -28,6 +29,7 @@
       {% else %}<span class="badge badge-red">{{ b.status }}</span>{% endif %}
     </td>
     <td class="actions">
+      <a href="/admin/bots/{{ b.bot_id }}/messages" class="btn btn-outline btn-sm">Messages</a>
       {% if b.status == 'active' %}
       <form method="POST" action="/admin/bots/{{ b.bot_id }}/disable" style="display:inline;padding:0;border:none;background:none;">
         <button class="btn btn-danger btn-sm">Disable</button>

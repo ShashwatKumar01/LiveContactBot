@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block nav %}
+<nav>
+  <span class="brand">ContactBot Admin</span>
+  <a href="/admin">Dashboard</a>
+  <a href="/admin/owners">Owners</a>
+  <a href="/admin/bots">Bots</a>
+  <a href="/admin/messages" class="active">Messages</a>
+  <a href="/admin/premium">Premium</a>
+  <a href="/admin/broadcast">Broadcast</a>
+  <a href="/admin/settings">Settings</a>
+  <a href="/admin/logout">Logout</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>Messages &amp; texts</h1>
+<p style="color:var(--muted);font-size:14px;margin-bottom:24px;max-width:720px;">
+  All user-facing copy. Owners edit child-bot texts in Telegram (<b>My Bots → Localizations</b>).
+  Superadmin edits the global promo line under <a href="/admin/settings">Settings</a>.
+</p>
+
+<h2 style="margin-top:8px;">Master builder bot (@{{ master_username }})</h2>
+<div class="card" style="margin-bottom:24px;">
+  <div class="label">/start welcome (code default)</div>
+  <pre class="msg-preview">{{ master_welcome }}</pre>
+</div>
+
+<h2>Global child-bot promo (Free plan /start footer)</h2>
+<div class="card" style="margin-bottom:24px;">
+  <pre class="msg-preview">{{ promo_footer }}</pre>
+  <a href="/admin/settings" class="btn btn-outline btn-sm" style="margin-top:12px;">Edit in Settings</a>
+</div>
+
+<h2>Default templates (new bots)</h2>
+<p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Used until the owner customizes per language.</p>
+{% for lang, strings in default_locales.items() %}
+<div class="card" style="margin-bottom:16px;">
+  <h2 style="color:var(--text);font-size:16px;margin-bottom:12px;">{{ lang.upper() }}</h2>
+  <div class="label">Welcome (/start)</div>
+  <pre class="msg-preview">{{ strings.start }}</pre>
+  <div class="label" style="margin-top:12px;">“Sent to admin” (if notice On)</div>
+  <pre class="msg-preview">{{ strings.received }}</pre>
+  <div class="label" style="margin-top:12px;">“Reply sent” (if notice On)</div>
+  <pre class="msg-preview">{{ strings.reply_sent }}</pre>
+</div>
+{% endfor %}
+
+<h2 style="margin-top:32px;">Per-bot configured texts</h2>
+<table>
+  <thead><tr><th>Bot</th><th>Default lang</th><th>Notices</th><th></th></tr></thead>
+  <tbody>
+  {% for b in bots %}
+  <tr>
+    <td>@{{ b.username }}</td>
+    <td>{{ b.default_locale or 'en' }}</td>
+    <td style="font-size:12px;color:var(--muted);">
+      sent→admin: {{ 'On' if b.notify_received else 'Off' }} ·
+      reply sent: {{ 'On' if b.notify_reply_sent else 'Off' }}
+    </td>
+    <td><a href="/admin/bots/{{ b.bot_id }}/messages" class="btn btn-outline btn-sm">View all</a></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
