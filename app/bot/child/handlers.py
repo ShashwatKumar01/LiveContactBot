@@ -3,6 +3,8 @@ import logging
 from aiogram import Router, F, Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
+
+from app.bot.filters.not_command import NotCommandFilter
 from aiogram.types import Message
 
 from app.core.constants import DEFAULT_LOCALES
@@ -89,7 +91,7 @@ def create_child_router() -> Router:
             progress_message_id=progress.message_id,
         )
 
-    @router.message(F.chat.type == "private", ~Command())
+    @router.message(F.chat.type == "private", NotCommandFilter())
     async def handle_private_message(
         message: Message,
         bot: Bot,
