@@ -23,6 +23,12 @@ class DatabaseManager:
             self._client.close()
 
     async def create_indexes(self) -> None:
+        import os
+
+        if os.getenv("SKIP_DB_INDEXES", "").lower() in ("1", "true", "yes"):
+            logger.warning("SKIP_DB_INDEXES set — skipping index creation")
+            return
+
         db = self.db
         try:
             await self._create_indexes(db)
@@ -33,7 +39,7 @@ class DatabaseManager:
                     "cannot satisfy Mongo's 512 MB free-space requirement. Fix: (1) Hobby plan "
                     "→ MongoDB volume → Live Resize to 1024 MB+, or (2) use MongoDB Atlas M0 "
                     "and set MONGODB_URI on contactbot (see DEPLOY_ATLAS.md). Continuing "
-                    "without indexes — use Atlas or resize volume for production.",
+                    "without indexes.",
                     _MONGO_DISK_ERROR,
                 )
                 return
