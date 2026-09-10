@@ -120,7 +120,11 @@ def create_child_router() -> Router:
             await message.answer("❌ This message type is not supported.")
             return
 
-        await relay.relay_user_to_admin(bot, bot_doc, message)
+        if not await relay.relay_user_to_admin(bot, bot_doc, message):
+            await message.answer(
+                "❌ Could not deliver your message. Please try again or send a different format."
+            )
+            return
         await maybe_send_auto_reply(bot, bot_doc, user_repo, message)
 
     @router.message(F.chat.type.in_({"group", "supergroup"}))

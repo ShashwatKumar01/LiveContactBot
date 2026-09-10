@@ -3,7 +3,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from aiogram.types import Message
 
-from app.core.constants import SUPPORTED_CONTENT_TYPES
+from app.bot.telegram_utils import copy_message_to_chat, message_can_be_relayed
 from app.services.child_start_text import apply_user_template_vars
 from app.database.repositories import BotRepository, BotUserRepository, MessageMapRepository
 
@@ -86,11 +86,7 @@ class RelayService:
                 return False
 
         try:
-            copied = await bot.copy_message(
-                chat_id=dest,
-                from_chat_id=message.chat.id,
-                message_id=message.message_id,
-            )
+            admin_msg_id = await copy_message_to_chat(bot, message, dest)
         except TelegramBadRequest as e:
             logger.error("Failed to copy message for bot %s: %s", bot_id, e)
             return False
@@ -103,7 +99,7 @@ class RelayService:
             user_id=user.id,
             user_msg_id=message.message_id,
             admin_chat_id=dest,
-            admin_msg_id=copied.message_id,
+            admin_msg_id=admin_msg_id,
             direction="user_to_admin",
         )
         await self._bot_repo.increment_stat(bot_id, "incoming_messages")
@@ -141,11 +137,7 @@ class RelayService:
 
         user_id = mapping["user_id"]
         try:
-            sent = await bot.copy_message(
-                chat_id=user_id,
-                from_chat_id=message.chat.id,
-                message_id=message.message_id,
-            )
+            user_msg_id = await copy_message_to_chat(bot, message, user_id)
         except TelegramForbiddenError:
             await self._user_repo.mark_blocked(bot_id, user_id)
             return False
@@ -156,7 +148,7 @@ class RelayService:
         await self._msg_map_repo.create(
             bot_id=bot_id,
             user_id=user_id,
-            user_msg_id=sent.message_id,
+            user_msg_id=user_msg_id,
             admin_chat_id=message.chat.id,
             admin_msg_id=message.message_id,
             direction="admin_to_user",
@@ -165,7 +157,7 @@ class RelayService:
         return True
 
     def is_supported_message(self, message: Message) -> bool:
-        return message.content_type in SUPPORTED_CONTENT_TYPES
+        return message_can_be_relayed(message)
 
     def is_admin_message(self, bot_doc: dict, user_id: int, chat_id: int) -> bool:
         owner_id = bot_doc["owner_id"]

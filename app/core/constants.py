@@ -34,6 +34,7 @@ SUPPORTED_CONTENT_TYPES = {
     "video_note",
     "location",
     "contact",
+    "venue",
     "poll",
     "dice",
 }
