@@ -27,7 +27,6 @@ class BotRepository:
             "first_name": first_name,
             "status": "active",
             "group_id": None,
-            "anonymous": False,
             "notify_received": False,
             "notify_reply_sent": False,
             "auto_reply_enabled": False,

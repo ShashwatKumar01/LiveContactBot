@@ -56,7 +56,6 @@ def create_master_router() -> Router:
             "• Connect a group for team replies\n"
             "• Broadcast to all users\n"
             "• Auto-reply with cooldown\n"
-            "• Anonymous mode\n"
             "• Statistics"
         )
 
@@ -318,31 +317,6 @@ def create_master_router() -> Router:
         )
         await safe_edit_text(callback.message, text, reply_markup=bot_settings_kb(bot_doc))
         await callback.answer(f"“Reply sent” notice: {'On' if new_val else 'Off'}")
-
-    @router.callback_query(F.data.startswith("toggle_anon:"))
-    async def cb_toggle_anon(
-        callback: CallbackQuery, bot_repo: BotRepository, bot_manager: BotManager
-    ) -> None:
-        if not callback.from_user or not callback.data:
-            return
-        bot_id = int(callback.data.split(":")[1])
-        bot_doc = await bot_repo.get_by_id(bot_id)
-        if not bot_doc or bot_doc["owner_id"] != callback.from_user.id:
-            await callback.answer("Not found.", show_alert=True)
-            return
-
-        new_val = not bot_doc.get("anonymous", False)
-        await bot_repo.update(bot_id, anonymous=new_val)
-        bot_doc["anonymous"] = new_val
-        await bot_manager.reload_bot(bot_id)
-
-        status = "enabled" if new_val else "disabled"
-        await callback.message.edit_text(
-            f"Here it is: <b>@{bot_doc.get('username')}</b>\n\n"
-            f"Anonymous mode: <b>{status}</b>",
-            reply_markup=bot_settings_kb(bot_doc),
-        )
-        await callback.answer(f"Anonymous mode {status}")
 
     @router.callback_query(F.data.startswith("disconnect:"))
     async def cb_disconnect(callback: CallbackQuery, bot_repo: BotRepository) -> None:

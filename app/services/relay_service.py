@@ -31,9 +31,7 @@ class RelayService:
         from app.core.constants import DEFAULT_LOCALES
         return DEFAULT_LOCALES["en"].get(key, "")
 
-    def _user_header(self, message: Message, anonymous: bool) -> str | None:
-        if anonymous:
-            return None
+    def _user_header(self, message: Message) -> str | None:
         user = message.from_user
         if not user:
             return None
@@ -71,9 +69,7 @@ class RelayService:
             await self._bot_repo.increment_stat(bot_id, "total_users")
 
         dest = self._admin_destination(bot_doc)
-        anonymous = bot_doc.get("anonymous", False)
-
-        header = self._user_header(message, anonymous)
+        header = self._user_header(message)
         if header:
             try:
                 header_msg = await bot.send_message(dest, header)
