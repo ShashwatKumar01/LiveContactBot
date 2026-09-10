@@ -1,5 +1,4 @@
 import logging
-import re
 
 from aiogram import Router, F, Bot
 from aiogram.filters import Command, CommandStart
@@ -22,12 +21,11 @@ from app.core.constants import MASTER_WELCOME
 from app.core.crypto import encrypt_token
 from app.database.repositories import BotRepository, OwnerRepository
 from app.bot.telegram_utils import safe_edit_text
+from app.bot.master.token_parse import delete_message_safe, extract_bot_token
 from app.services.bot_manager import BotManager
 from app.services.entitlement_service import EntitlementService
 
 logger = logging.getLogger(__name__)
-
-TOKEN_RE = re.compile(r"^\d+:[A-Za-z0-9_-]+$")
 
 
 def create_master_router() -> Router:
@@ -48,7 +46,7 @@ def create_master_router() -> Router:
         await message.answer(
             "<b>ContactBot Help</b>\n\n"
             "1. Create a bot with @BotFather and get its token.\n"
-            "2. Use /addbot and paste the token.\n"
+            "2. Use /addbot — paste the token or forward the message from @BotFather.\n"
             "3. Users message your bot — you receive messages in your chat with that bot.\n"
             "4. Reply to any forwarded message to respond.\n\n"
             "<b>Features:</b>\n"
@@ -63,7 +61,7 @@ def create_master_router() -> Router:
     async def cmd_addbot(message: Message, state: FSMContext) -> None:
         await state.set_state(AddBotStates.waiting_for_token)
         await message.answer(
-            "Send me your bot token from @BotFather.\n\n"
+            "Send your bot token from @BotFather — paste it or <b>forward</b> BotFather's message.\n\n"
             "<i>Example: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz</i>"
         )
 
@@ -101,7 +99,7 @@ def create_master_router() -> Router:
     async def cb_add_bot(callback: CallbackQuery, state: FSMContext) -> None:
         await state.set_state(AddBotStates.waiting_for_token)
         await callback.message.answer(
-            "Send me your bot token from @BotFather.\n\n"
+            "Send your bot token from @BotFather — paste it or <b>forward</b> BotFather's message.\n\n"
             "<i>Example: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz</i>"
         )
         await callback.answer()
@@ -137,7 +135,7 @@ def create_master_router() -> Router:
         entitlement: EntitlementService,
         bot_manager: BotManager,
     ) -> None:
-        if not message.from_user or not message.text:
+        if not message.from_user:
             return
 
         if await owner_repo.is_banned(message.from_user.id):
@@ -145,10 +143,17 @@ def create_master_router() -> Router:
             await state.clear()
             return
 
-        token = message.text.strip()
-        if not TOKEN_RE.match(token):
-            await message.answer("❌ Invalid token format. Please send a valid bot token.")
+        token = extract_bot_token(message)
+        if not token:
+            hint = (
+                "Forward the token message from @BotFather, or paste the token line only."
+                if message.forward_origin or message.forward_from
+                else "❌ Could not find a bot token. Paste the token or forward @BotFather's message."
+            )
+            await message.answer(hint)
             return
+
+        await delete_message_safe(message)
 
         test_bot = Bot(token=token)
         try:
