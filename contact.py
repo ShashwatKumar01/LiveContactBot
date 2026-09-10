@@ -85,8 +85,6 @@ async def main() -> None:
         entitlement=entitlement,
     )
 
-    await bot_manager.start_all()
-
     broadcast_worker = BroadcastWorker(
         settings=settings,
         bot_repo=bot_repo,
@@ -133,6 +131,11 @@ async def main() -> None:
         subscription_repo=subscription_repo,
     )
     bot_manager.attach_web_app(web_app)
+    await bot_manager.start_all()
+    from app.web.app_factory import register_child_webhook
+
+    for instance in bot_manager.instances.values():
+        register_child_webhook(web_app, settings, instance)
 
     runner = web.AppRunner(web_app)
     await runner.setup()

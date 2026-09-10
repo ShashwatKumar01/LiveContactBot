@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo import ReturnDocument
 
 from app.core.constants import DEFAULT_LOCALES
 
@@ -75,6 +76,29 @@ class BotRepository:
     async def token_exists(self, bot_id: int) -> bool:
         doc = await self._col.find_one({"bot_id": bot_id}, {"_id": 1})
         return doc is not None
+
+    async def reactivate(
+        self,
+        bot_id: int,
+        owner_id: int,
+        token_encrypted: str,
+        username: str,
+        first_name: str,
+    ) -> dict | None:
+        now = datetime.now(timezone.utc)
+        return await self._col.find_one_and_update(
+            {"bot_id": bot_id, "owner_id": owner_id},
+            {
+                "$set": {
+                    "status": "active",
+                    "token_encrypted": token_encrypted,
+                    "username": username,
+                    "first_name": first_name,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
+        )
 
     async def count_all(self, status: str | None = None) -> int:
         query = {"status": status} if status else {}

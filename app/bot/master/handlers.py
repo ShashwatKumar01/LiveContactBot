@@ -18,6 +18,7 @@ from app.core.config import Settings
 from app.core.constants import MASTER_WELCOME
 from app.core.crypto import encrypt_token
 from app.database.repositories import BotRepository, OwnerRepository
+from app.bot.telegram_utils import safe_edit_text
 from app.services.bot_manager import BotManager
 from app.services.entitlement_service import EntitlementService
 
@@ -80,12 +81,13 @@ def create_master_router() -> Router:
 
     @router.callback_query(F.data == "back_main")
     async def cb_back_main(callback: CallbackQuery) -> None:
-        await callback.message.edit_text(MASTER_WELCOME, reply_markup=main_menu_kb())
+        await safe_edit_text(callback.message, MASTER_WELCOME, reply_markup=main_menu_kb())
         await callback.answer()
 
     @router.callback_query(F.data == "help")
     async def cb_help(callback: CallbackQuery) -> None:
-        await callback.message.edit_text(
+        await safe_edit_text(
+            callback.message,
             "<b>ContactBot Help</b>\n\n"
             "Create a bot with @BotFather, then add it here with /addbot.\n"
             "All user messages are forwarded to you. Reply to forward back.",
@@ -109,11 +111,14 @@ def create_master_router() -> Router:
         bots = await bot_repo.get_by_owner(callback.from_user.id)
         active = [b for b in bots if b.get("status") == "active"]
         if not active:
-            await callback.message.edit_text(
-                "You have no connected bots yet.", reply_markup=main_menu_kb()
+            await safe_edit_text(
+                callback.message,
+                "You have no connected bots yet.",
+                reply_markup=main_menu_kb(),
             )
         else:
-            await callback.message.edit_text(
+            await safe_edit_text(
+                callback.message,
                 f"<b>Your bots ({len(active)}):</b>",
                 reply_markup=bots_list_kb(active),
             )
@@ -143,12 +148,6 @@ def create_master_router() -> Router:
             await message.answer("❌ Invalid token format. Please send a valid bot token.")
             return
 
-        allowed, reason = await entitlement.can_add_bot(message.from_user.id)
-        if not allowed:
-            await message.answer(f"❌ {reason}")
-            await state.clear()
-            return
-
         test_bot = Bot(token=token)
         try:
             me = await test_bot.get_me()
@@ -158,24 +157,48 @@ def create_master_router() -> Router:
             return
         await test_bot.session.close()
 
-        if await bot_repo.token_exists(me.id):
-            await message.answer("❌ This bot is already registered.")
-            await state.clear()
-            return
-
         encrypted = encrypt_token(token, settings.token_encryption_key)
-        bot_doc = await bot_repo.create(
-            bot_id=me.id,
-            owner_id=message.from_user.id,
-            token_encrypted=encrypted,
-            username=me.username or "",
-            first_name=me.first_name or "",
-        )
+        existing = await bot_repo.get_by_id(me.id)
+
+        if not existing:
+            allowed, reason = await entitlement.can_add_bot(message.from_user.id)
+            if not allowed:
+                await message.answer(f"❌ {reason}")
+                await state.clear()
+                return
+
+        if existing:
+            if existing.get("owner_id") != message.from_user.id:
+                await message.answer("❌ This bot is registered to another account.")
+                await state.clear()
+                return
+            bot_doc = await bot_repo.reactivate(
+                bot_id=me.id,
+                owner_id=message.from_user.id,
+                token_encrypted=encrypted,
+                username=me.username or "",
+                first_name=me.first_name or "",
+            )
+            if not bot_doc:
+                await message.answer("❌ Could not reconnect bot.")
+                await state.clear()
+                return
+            restart_msg = "reconnected"
+        else:
+            bot_doc = await bot_repo.create(
+                bot_id=me.id,
+                owner_id=message.from_user.id,
+                token_encrypted=encrypted,
+                username=me.username or "",
+                first_name=me.first_name or "",
+            )
+            restart_msg = "connected"
 
         try:
             await bot_manager.start_bot(bot_doc)
         except Exception as e:
             logger.error("Failed to start bot @%s: %s", me.username, e)
+            await bot_manager.stop_bot(me.id)
             await bot_repo.disconnect(me.id, message.from_user.id)
             await message.answer("❌ Bot registered but failed to start. Try again later.")
             await state.clear()
@@ -183,7 +206,7 @@ def create_master_router() -> Router:
 
         await state.clear()
         await message.answer(
-            f"✅ Bot <b>@{me.username}</b> connected successfully!\n\n"
+            f"✅ Bot <b>@{me.username}</b> {restart_msg} successfully!\n\n"
             f"Users can now message @{me.username} and you'll receive their messages here.\n"
             f"Use /mybots to manage settings.",
             reply_markup=bot_settings_kb(bot_doc),
