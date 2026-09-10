@@ -123,24 +123,20 @@ class BotManager:
             dispatcher=dp,
             username=me.username or bot_doc.get("username", ""),
         )
+        self._instances[bot_id] = instance
 
         if self._settings.is_production:
             webhook_path = f"/webhook/child/{bot_id}"
+            host = (self._settings.webhook_host or "").rstrip("/")
             await bot.set_webhook(
-                url=f"{self._settings.webhook_host}{webhook_path}",
+                url=f"{host}{webhook_path}",
                 secret_token=self._settings.webhook_secret,
             )
-            if self._web_app:
-                from app.web.app_factory import register_child_webhook
-
-                register_child_webhook(self._web_app, self._settings, instance)
         else:
             instance.task = asyncio.create_task(
                 self._poll(instance),
                 name=f"child-bot-{bot_id}",
             )
-
-        self._instances[bot_id] = instance
         logger.info("Started child bot @%s (id=%s)", instance.username, bot_id)
         return instance
 

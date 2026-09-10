@@ -197,10 +197,12 @@ def create_master_router() -> Router:
         try:
             await bot_manager.start_bot(bot_doc)
         except Exception as e:
-            logger.error("Failed to start bot @%s: %s", me.username, e)
+            logger.exception("Failed to start bot @%s: %s", me.username, e)
             await bot_manager.stop_bot(me.id)
             await bot_repo.disconnect(me.id, message.from_user.id)
-            await message.answer("❌ Bot registered but failed to start. Try again later.")
+            await message.answer(
+                "❌ Bot could not start. Check master bot logs or try again in a minute."
+            )
             await state.clear()
             return
 

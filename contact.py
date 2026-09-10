@@ -132,10 +132,6 @@ async def main() -> None:
     )
     bot_manager.attach_web_app(web_app)
     await bot_manager.start_all()
-    from app.web.app_factory import register_child_webhook
-
-    for instance in bot_manager.instances.values():
-        register_child_webhook(web_app, settings, instance)
 
     runner = web.AppRunner(web_app)
     await runner.setup()
