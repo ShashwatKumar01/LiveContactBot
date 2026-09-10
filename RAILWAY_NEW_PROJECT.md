@@ -1,7 +1,19 @@
 # New Railway project + GitHub (LiveContactBot)
 
+**Current CLI project (2026-09-10):** `LiveContactBot`  
+**Public URL:** https://contactbot-production-17b3.up.railway.app  
+**Project ID:** `b656f5dc-cd3e-4de1-96fc-a369c3584688`
+
 Repo: **https://github.com/ShashwatKumar01/LiveContactBot.git**  
 Branch: **main** (already contains latest ContactBot code)
+
+### Free plan note (Redis)
+
+Railway **free** tier allows only **2 services** (here: `contactbot` + `MongoDB`). Adding **Redis** on Railway failed with *resource provision limit*. Use one of:
+
+1. **Upgrade** Railway plan → `railway add -d redis --json --verbose true` → set `REDIS_URL=${{Redis.REDIS_URL}}` on `contactbot`.
+2. **Upstash Redis** (free): create DB → `railway variable set REDIS_URL=rediss://... --service contactbot`
+3. **MongoDB Atlas** instead of Railway Mongo → delete Railway MongoDB service → add Railway Redis (still 2 services).
 
 ## 1. Push code (local)
 
