@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block nav %}
+<nav>
+  <span class="brand">ContactBot Admin</span>
+  <a href="/admin" class="active">Dashboard</a>
+  <a href="/admin/owners">Owners</a>
+  <a href="/admin/bots">Bots</a>
+  <a href="/admin/premium">Premium</a>
+  <a href="/admin/broadcast">Broadcast</a>
+  <a href="/admin/logout">Logout</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+{% if flash %}<div class="alert alert-success">{{ flash }}</div>{% endif %}
+<div class="grid">
+  <div class="card"><div class="label">Owners</div><div class="value">{{ stats.owners }}</div></div>
+  <div class="card"><div class="label">Active Bots</div><div class="value">{{ stats.active_bots }}</div></div>
+  <div class="card"><div class="label">Premium Users</div><div class="value">{{ stats.premium }}</div></div>
+  <div class="card"><div class="label">End Users</div><div class="value">{{ stats.end_users }}</div></div>
+  <div class="card"><div class="label">Incoming Msgs</div><div class="value">{{ stats.incoming }}</div></div>
+  <div class="card"><div class="label">Running Instances</div><div class="value">{{ stats.running }}</div></div>
+</div>
+<div class="actions">
+  <form method="POST" action="/admin/restart" style="display:inline;padding:0;border:none;background:none;">
+    <button type="submit" class="btn btn-outline">🔄 Restart All Bots</button>
+  </form>
+</div>
+{% endblock %}

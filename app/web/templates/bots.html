@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block nav %}
+<nav>
+  <span class="brand">ContactBot Admin</span>
+  <a href="/admin">Dashboard</a>
+  <a href="/admin/owners">Owners</a>
+  <a href="/admin/bots" class="active">Bots</a>
+  <a href="/admin/premium">Premium</a>
+  <a href="/admin/broadcast">Broadcast</a>
+  <a href="/admin/logout">Logout</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>All Bots</h1>
+{% if flash %}<div class="alert alert-success">{{ flash }}</div>{% endif %}
+<table>
+  <thead><tr><th>Bot</th><th>ID</th><th>Owner</th><th>Users</th><th>Status</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for b in bots %}
+  <tr>
+    <td>@{{ b.username }}</td>
+    <td><code>{{ b.bot_id }}</code></td>
+    <td><code>{{ b.owner_id }}</code></td>
+    <td>{{ b.stats.total_users if b.stats else 0 }}</td>
+    <td>
+      {% if b.status == 'active' %}<span class="badge badge-green">Active</span>
+      {% else %}<span class="badge badge-red">{{ b.status }}</span>{% endif %}
+    </td>
+    <td class="actions">
+      {% if b.status == 'active' %}
+      <form method="POST" action="/admin/bots/{{ b.bot_id }}/disable" style="display:inline;padding:0;border:none;background:none;">
+        <button class="btn btn-danger btn-sm">Disable</button>
+      </form>
+      {% else %}
+      <form method="POST" action="/admin/bots/{{ b.bot_id }}/enable" style="display:inline;padding:0;border:none;background:none;">
+        <button class="btn btn-primary btn-sm">Enable</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

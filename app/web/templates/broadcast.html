@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block nav %}
+<nav>
+  <span class="brand">ContactBot Admin</span>
+  <a href="/admin">Dashboard</a>
+  <a href="/admin/owners">Owners</a>
+  <a href="/admin/bots">Bots</a>
+  <a href="/admin/premium">Premium</a>
+  <a href="/admin/broadcast" class="active">Broadcast</a>
+  <a href="/admin/logout">Logout</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>Master Broadcast</h1>
+{% if flash %}<div class="alert alert-success">{{ flash }}</div>{% endif %}
+{% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+<form method="POST" action="/admin/broadcast">
+  <label>Target audience</label>
+  <select name="target" required>
+    <option value="all_owners">All bot owners ({{ owner_count }})</option>
+    <option value="all_users">All end-users across all bots ({{ user_count }})</option>
+  </select>
+  <label>Message (HTML supported)</label>
+  <textarea name="message" placeholder="Your announcement..." required></textarea>
+  <button type="submit" class="btn btn-primary">Send Broadcast</button>
+</form>
+<p style="margin-top:16px;font-size:13px;color:var(--muted);">Messages are sent via the master bot and queued in the background with rate limiting.</p>
+{% endblock %}

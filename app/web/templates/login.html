@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Login — ContactBot Admin{% endblock %}
+{% block content %}
+<div class="login-wrap" style="margin:-32px -24px;">
+  <div class="login-box">
+    <h1>👑 Admin Panel</h1>
+    <p>ContactBot Super Admin</p>
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    <form method="POST" action="/admin/login">
+      <label>Password</label>
+      <input type="password" name="password" placeholder="Admin password" required autofocus>
+      <button type="submit" class="btn btn-primary" style="width:100%">Sign In</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block nav %}
+<nav>
+  <span class="brand">ContactBot Admin</span>
+  <a href="/admin">Dashboard</a>
+  <a href="/admin/owners" class="active">Owners</a>
+  <a href="/admin/bots">Bots</a>
+  <a href="/admin/premium">Premium</a>
+  <a href="/admin/broadcast">Broadcast</a>
+  <a href="/admin/logout">Logout</a>
+</nav>
+{% endblock %}
+{% block content %}
+<h1>Owners</h1>
+{% if flash %}<div class="alert alert-success">{{ flash }}</div>{% endif %}
+<table>
+  <thead><tr><th>ID</th><th>Username</th><th>Plan</th><th>Bots</th><th>Status</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for o in owners %}
+  <tr>
+    <td><code>{{ o.telegram_id }}</code></td>
+    <td>@{{ o.username or '—' }}</td>
+    <td>
+      {% if o.plan_id == 'PREMIUM' %}<span class="badge badge-orange">Premium</span>
+      {% else %}<span class="badge badge-blue">Free</span>{% endif %}
+    </td>
+    <td>{{ o.bot_count }}</td>
+    <td>{% if o.banned %}<span class="badge badge-red">Banned</span>{% else %}<span class="badge badge-green">Active</span>{% endif %}</td>
+    <td class="actions">
+      {% if o.plan_id != 'PREMIUM' %}
+      <form method="POST" action="/admin/owners/{{ o.telegram_id }}/premium" style="display:inline;padding:0;border:none;background:none;">
+        <button class="btn btn-primary btn-sm">Grant Premium</button>
+      </form>
+      {% else %}
+      <form method="POST" action="/admin/owners/{{ o.telegram_id }}/free" style="display:inline;padding:0;border:none;background:none;">
+        <button class="btn btn-outline btn-sm">Revoke</button>
+      </form>
+      {% endif %}
+      {% if not o.banned %}
+      <form method="POST" action="/admin/owners/{{ o.telegram_id }}/ban" style="display:inline;padding:0;border:none;background:none;">
+        <button class="btn btn-danger btn-sm">Ban</button>
+      </form>
+      {% else %}
+      <form method="POST" action="/admin/owners/{{ o.telegram_id }}/unban" style="display:inline;padding:0;border:none;background:none;">
+        <button class="btn btn-primary btn-sm">Unban</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
