@@ -1,14 +1,16 @@
 import functools
 import os
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     master_bot_token: str = Field(alias="MASTER_BOT_TOKEN")
 
-    mongodb_uri: str = Field(alias="MONGODB_URI")
+    mongodb_uri: str = Field(
+        validation_alias=AliasChoices("MONGODB_URI", "MONGO_URI"),
+    )
     mongodb_database: str = Field(alias="MONGODB_DATABASE")
 
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")

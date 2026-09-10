@@ -17,8 +17,8 @@ GitHub repo: https://github.com/ShashwatKumar01/LiveContactBot.git
 | Variable | Value |
 |----------|--------|
 | `MASTER_BOT_TOKEN` | From @BotFather |
-| `MONGODB_URI` | From MongoDB service |
-| `MONGODB_DATABASE` | `contactbot` |
+| `MONGODB_URI` | Atlas `mongodb+srv://...` (recommended) or Railway `${{MongoDB.MONGO_URL}}` |
+| `MONGODB_DATABASE` | `ChatReplyBot` |
 | `REDIS_URL` | From Redis service |
 | `ENVIRONMENT` | `production` |
 | `WEBHOOK_HOST` | `https://YOUR-SERVICE.up.railway.app` (no trailing slash) |
@@ -64,3 +64,7 @@ Pushes to `main` will auto-deploy.
 - Master bot: `/start`, `/addbot`
 
 Do **not** commit `.env` (see `.gitignore`).
+
+## Backups
+
+Regular Mongo exports: **[BACKUP_MONGODB.md](BACKUP_MONGODB.md)** and `scripts/backup-mongo.ps1`. Also save Railway **Variables** (especially `TOKEN_ENCRYPTION_KEY`) outside Railway.

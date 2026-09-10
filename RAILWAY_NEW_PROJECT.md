@@ -37,8 +37,8 @@ Open your **app service** (not Mongo/Redis) → **Variables**. Use **Raw Editor*
 
 ```env
 MASTER_BOT_TOKEN=your_master_bot_token_from_botfather
-MONGODB_URI=${{MongoDB.MONGO_URL}}
-MONGODB_DATABASE=contactbot
+MONGODB_URI=mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DATABASE=ChatReplyBot
 REDIS_URL=${{Redis.REDIS_URL}}
 ENVIRONMENT=production
 WEBHOOK_PATH=/webhook/master

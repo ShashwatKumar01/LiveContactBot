@@ -15,7 +15,7 @@ Railway's **500 MB** Mongo plugin leaves **< 512 MB free**, so MongoDB refuses i
 1. **Database** → **Connect** → **Drivers** → copy the URI, e.g.  
    `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/`
 2. Append database name:  
-   `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/contactbot?retryWrites=true&w=majority`
+   `mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority`
 
 ## 3. Set on Railway (contactbot service only)
 
@@ -24,7 +24,7 @@ In Railway → **contactbot** → **Variables**:
 | Variable | Value |
 |----------|--------|
 | `MONGODB_URI` | Your Atlas URI (replace Railway `${{MongoDB.MONGO_URL}}`) |
-| `MONGODB_DATABASE` | `contactbot` (or leave in URI path) |
+| `MONGODB_DATABASE` | `ChatReplyBot` |
 
 You can **remove or stop** the Railway **MongoDB** service to save usage (optional).
 
