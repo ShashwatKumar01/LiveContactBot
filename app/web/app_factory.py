@@ -15,6 +15,7 @@ def create_web_app(
     user_repo,
     broadcast_repo,
     subscription_repo,
+    app_settings_repo,
 ) -> web.Application:
     app = web.Application()
     app["settings"] = settings
@@ -24,6 +25,7 @@ def create_web_app(
     app["user_repo"] = user_repo
     app["broadcast_repo"] = broadcast_repo
     app["subscription_repo"] = subscription_repo
+    app["app_settings_repo"] = app_settings_repo
 
     async def health(_request: web.Request) -> web.Response:
         return web.json_response({"status": "ok", "service": "contactbot"})

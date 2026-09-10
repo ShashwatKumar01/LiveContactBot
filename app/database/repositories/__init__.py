@@ -1,3 +1,4 @@
+from .app_settings_repo import AppSettingsRepository
 from .bot_repo import BotRepository
 from .owner_repo import OwnerRepository
 from .user_repo import BotUserRepository
@@ -6,6 +7,7 @@ from .broadcast_repo import BroadcastRepository
 from .subscription_repo import SubscriptionRepository
 
 __all__ = [
+    "AppSettingsRepository",
     "BotRepository",
     "OwnerRepository",
     "BotUserRepository",

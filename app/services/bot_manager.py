@@ -12,6 +12,7 @@ from redis.asyncio import Redis
 from app.core.config import Settings
 from app.core.crypto import decrypt_token
 from app.database.repositories import (
+    AppSettingsRepository,
     BotRepository,
     BotUserRepository,
     BroadcastRepository,
@@ -47,6 +48,7 @@ class BotManager:
         user_repo: BotUserRepository,
         msg_map_repo: MessageMapRepository,
         broadcast_repo: BroadcastRepository,
+        app_settings: AppSettingsRepository,
         entitlement: EntitlementService | None = None,
     ) -> None:
         self._settings = settings
@@ -56,6 +58,7 @@ class BotManager:
         self._user_repo = user_repo
         self._msg_map_repo = msg_map_repo
         self._broadcast_repo = broadcast_repo
+        self._app_settings = app_settings
         self._entitlement = entitlement
         self._instances: dict[int, ChildBotInstance] = {}
         self._web_app: web.Application | None = None
@@ -110,6 +113,7 @@ class BotManager:
             user_repo=self._user_repo,
             broadcast_repo=self._broadcast_repo,
             entitlement=self._entitlement,
+            app_settings=self._app_settings,
         )
         dp.message.middleware(middleware)
         dp.callback_query.middleware(middleware)

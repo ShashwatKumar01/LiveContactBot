@@ -34,6 +34,8 @@ def setup_web_admin(app: web.Application) -> None:
     app.router.add_post("/admin/bots/{bot_id}/disable", require_auth(disable_bot))
     app.router.add_post("/admin/bots/{bot_id}/enable", require_auth(enable_bot))
     app.router.add_post("/admin/premium/grant", require_auth(grant_premium_form))
+    app.router.add_get("/admin/settings", require_auth(settings_page))
+    app.router.add_post("/admin/settings", require_auth(settings_submit))
 
 
 async def login_page(request: web.Request) -> web.Response:
@@ -206,6 +208,27 @@ async def disable_bot(request: web.Request) -> web.Response:
     await bot_repo.admin_disable(bot_id, reason="Disabled via web admin")
     await bot_manager.stop_bot(bot_id)
     raise web.HTTPFound("/admin/bots?flash=Bot+disabled")
+
+
+async def settings_page(request: web.Request) -> web.Response:
+    app_settings_repo = request.app["app_settings_repo"]
+    footer = await app_settings_repo.get_child_start_promo_footer()
+    flash = request.rel_url.query.get("flash", "")
+    return render_template(
+        "settings.html",
+        request,
+        {"promo_footer": footer, "flash": flash},
+    )
+
+
+async def settings_submit(request: web.Request) -> web.Response:
+    data = await request.post()
+    footer = (data.get("promo_footer") or "").strip()
+    if not footer:
+        raise web.HTTPFound("/admin/settings?flash=Promo+text+cannot+be+empty")
+    app_settings_repo = request.app["app_settings_repo"]
+    await app_settings_repo.set_child_start_promo_footer(footer)
+    raise web.HTTPFound("/admin/settings?flash=Promo+text+saved")
 
 
 async def enable_bot(request: web.Request) -> web.Response:

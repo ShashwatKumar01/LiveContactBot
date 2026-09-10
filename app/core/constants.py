@@ -8,6 +8,10 @@ DEFAULT_RECEIVED_MESSAGE = "✅ Your message has been sent to the admin."
 
 DEFAULT_REPLY_SENT_MESSAGE = "✅ Reply sent."
 
+DEFAULT_CHILD_PROMO_FOOTER = (
+    '<i>This bot was made using <a href="https://t.me/ReplyDmBot">@ReplyDmBot</a></i>'
+)
+
 MASTER_WELCOME = (
     "🤖 <b>ContactBot</b> — builder of feedback bots for Telegram.\n\n"
     "Connect your own bot and let users contact you without exposing your personal account.\n\n"

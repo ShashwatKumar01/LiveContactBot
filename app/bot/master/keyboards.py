@@ -30,9 +30,23 @@ def bot_settings_kb(bot_doc: dict) -> InlineKeyboardMarkup:
     bot_id = bot_doc["bot_id"]
     anonymous = bot_doc.get("anonymous", False)
     anon_label = "Anonymous mode: On" if anonymous else "Anonymous mode: Off"
+    notify_in = "On" if bot_doc.get("notify_received", False) else "Off"
+    notify_reply = "On" if bot_doc.get("notify_reply_sent", False) else "Off"
 
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="🌐 Localizations", callback_data=f"locales:{bot_id}"))
+    builder.row(
+        InlineKeyboardButton(
+            text=f"📥 “Sent to admin” notice: {notify_in}",
+            callback_data=f"toggle_notify_received:{bot_id}",
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text=f"📤 “Reply sent” notice: {notify_reply}",
+            callback_data=f"toggle_notify_reply:{bot_id}",
+        )
+    )
     builder.row(InlineKeyboardButton(text="👥 Groups", callback_data=f"groups:{bot_id}"))
     builder.row(InlineKeyboardButton(text="📢 Broadcast", callback_data=f"broadcast_info:{bot_id}"))
     builder.row(InlineKeyboardButton(text="📊 Statistics", callback_data=f"stats:{bot_id}"))
@@ -58,4 +72,42 @@ def locales_kb(bot_id: int, locales: dict) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=f"🌐 {lang.upper()}", callback_data=f"locale_view:{bot_id}:{lang}")
         )
     builder.row(InlineKeyboardButton(text="« Back", callback_data=f"bot:{bot_id}"))
+    return builder.as_markup()
+
+
+def locale_lang_kb(bot_id: int, lang: str, bot_doc: dict) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    default = bot_doc.get("default_locale", "en")
+    if lang == default:
+        builder.row(
+            InlineKeyboardButton(
+                text="Change the welcome text",
+                callback_data=f"locale_edit:{bot_id}:{lang}:start",
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text="Change auto-reply texts",
+            callback_data=f"locale_autoreply:{bot_id}:{lang}",
+        )
+    )
+    builder.row(InlineKeyboardButton(text="« Back", callback_data=f"locales:{bot_id}"))
+    return builder.as_markup()
+
+
+def locale_autoreply_kb(bot_id: int, lang: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(
+            text="“Sent to admin” message",
+            callback_data=f"locale_edit:{bot_id}:{lang}:received",
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="“Reply sent” message",
+            callback_data=f"locale_edit:{bot_id}:{lang}:reply_sent",
+        )
+    )
+    builder.row(InlineKeyboardButton(text="« Back", callback_data=f"locale_view:{bot_id}:{lang}"))
     return builder.as_markup()

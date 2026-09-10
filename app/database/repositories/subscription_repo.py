@@ -17,10 +17,14 @@ class SubscriptionRepository:
                 "_id": "FREE",
                 "name": "Free",
                 "max_bots": 5,
-                "broadcasts_per_day": 2,
+                "broadcasts_per_day": -1,
                 "price_inr": 0,
                 "price_display": "Free",
-                "features": ["Up to 5 bots", "2 broadcasts per day"],
+                "features": [
+                    "Up to 5 contact bots",
+                    "Unlimited broadcasts",
+                    "ReplyDmBot branding on /start",
+                ],
             },
             {
                 "_id": "PREMIUM",
@@ -30,8 +34,9 @@ class SubscriptionRepository:
                 "price_inr": 299,
                 "price_display": "₹299/month",
                 "features": [
-                    "Up to 50 bots",
+                    "Up to 50 contact bots",
                     "Unlimited broadcasts",
+                    "No branding on /start",
                     "Priority support",
                 ],
             },

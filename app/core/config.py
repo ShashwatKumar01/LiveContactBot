@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     broadcast_batch_size: int = Field(default=200, alias="BROADCAST_BATCH_SIZE")
 
     max_bots_free: int = Field(default=5, alias="MAX_BOTS_FREE")
-    free_broadcasts_per_day: int = Field(default=2, alias="FREE_BROADCASTS_PER_DAY")
+    free_broadcasts_per_day: int = Field(default=-1, alias="FREE_BROADCASTS_PER_DAY")
 
     admin_web_password: str = Field(default="changeme", alias="ADMIN_WEB_PASSWORD")
     admin_web_secret: str = Field(default="change-this-secret-key", alias="ADMIN_WEB_SECRET")

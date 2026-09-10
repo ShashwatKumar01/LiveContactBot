@@ -34,7 +34,7 @@ class EntitlementService:
             "plan_id": plan_id,
             "plan_name": plan.get("name", plan_id),
             "max_bots": max_bots,
-            "broadcasts_per_day": plan.get("broadcasts_per_day", 2),
+            "broadcasts_per_day": plan.get("broadcasts_per_day", -1),
             "is_premium": plan_id == "PREMIUM",
         }
 
@@ -67,6 +67,10 @@ class EntitlementService:
             )
         remaining = daily_limit - used
         return True, f"OK ({remaining} remaining today)"
+
+    async def shows_child_promo_branding(self, owner_id: int) -> bool:
+        limits = await self.get_plan_limits(owner_id)
+        return not limits.get("is_premium", False)
 
     async def get_plan_summary(self, owner_id: int) -> dict:
         limits = await self.get_plan_limits(owner_id)

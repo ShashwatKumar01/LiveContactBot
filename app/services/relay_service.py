@@ -4,6 +4,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from aiogram.types import Message
 
 from app.core.constants import SUPPORTED_CONTENT_TYPES
+from app.services.child_start_text import apply_user_template_vars
 from app.database.repositories import BotRepository, BotUserRepository, MessageMapRepository
 
 logger = logging.getLogger(__name__)
@@ -111,10 +112,14 @@ class RelayService:
         )
         await self._bot_repo.increment_stat(bot_id, "incoming_messages")
 
+        if not bot_doc.get("notify_received", False):
+            return True
+
         received_text = self._get_locale_string(
             bot_doc, "received", user.language_code
         )
         if received_text:
+            received_text = apply_user_template_vars(received_text, user)
             try:
                 await message.answer(received_text)
             except TelegramForbiddenError:

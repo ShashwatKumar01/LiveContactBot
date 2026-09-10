@@ -5,7 +5,12 @@ from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
 from app.core.constants import DEFAULT_LOCALES
-from app.database.repositories import BroadcastRepository
+from app.database.repositories import AppSettingsRepository, BroadcastRepository
+from app.services.child_start_text import (
+    append_promo_footer,
+    apply_user_template_vars,
+    get_locale_start,
+)
 from app.services.entitlement_service import EntitlementService
 from app.services.relay_service import RelayService
 
@@ -19,12 +24,17 @@ def create_child_router() -> Router:
     async def cmd_start(
         message: Message,
         bot_doc: dict,
-        relay: RelayService,
+        app_settings: AppSettingsRepository,
+        entitlement: EntitlementService,
     ) -> None:
-        locales = bot_doc.get("locales", DEFAULT_LOCALES)
-        default = bot_doc.get("default_locale", "en")
         lang = message.from_user.language_code if message.from_user else None
-        text = locales.get(lang, locales.get(default, DEFAULT_LOCALES["en"]))["start"]
+        text = apply_user_template_vars(
+            get_locale_start(bot_doc, lang),
+            message.from_user,
+        )
+        if await entitlement.shows_child_promo_branding(bot_doc["owner_id"]):
+            footer = await app_settings.get_child_start_promo_footer()
+            text = append_promo_footer(text, footer)
         await message.answer(text)
 
     @router.message(Command("broadcast"))
@@ -78,11 +88,12 @@ def create_child_router() -> Router:
         if relay.is_admin_message(bot_doc, user_id, message.chat.id):
             if message.reply_to_message:
                 success = await relay.relay_admin_to_user(bot, bot_doc, message)
-                if success:
+                if success and bot_doc.get("notify_reply_sent", False):
                     locales = bot_doc.get("locales", DEFAULT_LOCALES)
                     default = bot_doc.get("default_locale", "en")
-                    text = locales.get(default, DEFAULT_LOCALES["en"])["reply_sent"]
-                    await message.reply(text)
+                    text = locales.get(default, DEFAULT_LOCALES["en"]).get("reply_sent", "")
+                    if text:
+                        await message.reply(text)
                 else:
                     await message.reply("❌ Could not deliver reply. User may have blocked the bot.")
             return

@@ -28,6 +28,8 @@ class BotRepository:
             "status": "active",
             "group_id": None,
             "anonymous": False,
+            "notify_received": False,
+            "notify_reply_sent": False,
             "locales": DEFAULT_LOCALES.copy(),
             "default_locale": "en",
             "stats": {

@@ -20,6 +20,7 @@ from redis.asyncio import Redis
 from app.core.config import get_settings
 from app.database.connection import db_manager
 from app.database.repositories import (
+    AppSettingsRepository,
     BotRepository,
     OwnerRepository,
     BotUserRepository,
@@ -64,7 +65,9 @@ async def main() -> None:
     msg_map_repo = MessageMapRepository(db)
     broadcast_repo = BroadcastRepository(db)
     subscription_repo = SubscriptionRepository(db)
+    app_settings_repo = AppSettingsRepository(db)
     await subscription_repo.seed_default_plans()
+    await app_settings_repo.ensure_defaults()
 
     entitlement = EntitlementService(
         settings=settings,
@@ -82,6 +85,7 @@ async def main() -> None:
         user_repo=user_repo,
         msg_map_repo=msg_map_repo,
         broadcast_repo=broadcast_repo,
+        app_settings=app_settings_repo,
         entitlement=entitlement,
     )
 
@@ -129,6 +133,7 @@ async def main() -> None:
         user_repo=user_repo,
         broadcast_repo=broadcast_repo,
         subscription_repo=subscription_repo,
+        app_settings_repo=app_settings_repo,
     )
     bot_manager.attach_web_app(web_app)
     await bot_manager.start_all()
