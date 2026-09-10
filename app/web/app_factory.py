@@ -16,10 +16,12 @@ def create_web_app(
     broadcast_repo,
     subscription_repo,
     app_settings_repo,
+    owner_alerts,
 ) -> web.Application:
     app = web.Application()
     app["settings"] = settings
     app["bot_manager"] = bot_manager
+    app["owner_alerts"] = owner_alerts
     app["bot_repo"] = bot_repo
     app["owner_repo"] = owner_repo
     app["user_repo"] = user_repo

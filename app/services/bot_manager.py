@@ -19,7 +19,10 @@ from app.database.repositories import (
     MessageMapRepository,
     OwnerRepository,
 )
+from aiogram.types import ErrorEvent
+
 from app.services.entitlement_service import EntitlementService
+from app.services.owner_alert_service import OwnerAlertService
 from app.services.relay_service import RelayService
 from app.bot.child.handlers import create_child_router
 from app.bot.child.middleware import ChildBotMiddleware
@@ -49,6 +52,7 @@ class BotManager:
         msg_map_repo: MessageMapRepository,
         broadcast_repo: BroadcastRepository,
         app_settings: AppSettingsRepository,
+        owner_alerts: OwnerAlertService,
         entitlement: EntitlementService | None = None,
     ) -> None:
         self._settings = settings
@@ -59,10 +63,16 @@ class BotManager:
         self._msg_map_repo = msg_map_repo
         self._broadcast_repo = broadcast_repo
         self._app_settings = app_settings
+        self._owner_alerts = owner_alerts
         self._entitlement = entitlement
+        self._master_bot: Bot | None = None
         self._instances: dict[int, ChildBotInstance] = {}
         self._web_app: web.Application | None = None
         self._relay = RelayService(bot_repo, user_repo, msg_map_repo)
+
+    def set_master_bot(self, master_bot: Bot) -> None:
+        self._master_bot = master_bot
+        self._relay.set_owner_notifier(self._owner_alerts, master_bot)
 
     def attach_web_app(self, app: web.Application) -> None:
         self._web_app = app
@@ -90,6 +100,14 @@ class BotManager:
                 await self.start_bot(bot_doc)
             except Exception as e:
                 logger.error("Failed to start bot %s: %s", bot_doc.get("username"), e)
+                await self._owner_alerts.notify_once(
+                    self._master_bot,
+                    bot_doc["owner_id"],
+                    bot_doc["bot_id"],
+                    bot_doc.get("username") or "bot",
+                    "start_failed",
+                    f"Your bot could not start on the server: {e}",
+                )
 
     async def start_bot(self, bot_doc: dict) -> ChildBotInstance:
         bot_id = bot_doc["bot_id"]
@@ -121,6 +139,24 @@ class BotManager:
         router = create_child_router()
         dp.include_router(router)
 
+        @dp.errors()
+        async def child_dispatcher_error(event: ErrorEvent) -> bool:
+            logger.exception(
+                "Child bot %s unhandled error: %s",
+                bot_id,
+                event.exception,
+            )
+            await self._owner_alerts.notify_once(
+                self._master_bot,
+                bot_doc["owner_id"],
+                bot_id,
+                bot_doc.get("username") or "bot",
+                "handler_error",
+                "Your bot stopped processing messages due to an error. "
+                "Try reconnecting from /mybots if users report no replies.",
+            )
+            return True
+
         instance = ChildBotInstance(
             bot_id=bot_id,
             bot=bot,
@@ -141,6 +177,7 @@ class BotManager:
                 self._poll(instance),
                 name=f"child-bot-{bot_id}",
             )
+        await self._owner_alerts.clear_bot(bot_id)
         logger.info("Started child bot @%s (id=%s)", instance.username, bot_id)
         return instance
 
@@ -154,6 +191,16 @@ class BotManager:
             pass
         except Exception as e:
             logger.error("Polling crashed for bot %s: %s", instance.bot_id, e)
+            bot_doc = await self._bot_repo.get_by_id(instance.bot_id)
+            if bot_doc:
+                await self._owner_alerts.notify_once(
+                    self._master_bot,
+                    bot_doc["owner_id"],
+                    instance.bot_id,
+                    bot_doc.get("username") or "bot",
+                    "poll_crashed",
+                    f"Your bot polling loop stopped: {e}",
+                )
 
     async def stop_bot(self, bot_id: int) -> None:
         instance = self._instances.pop(bot_id, None)

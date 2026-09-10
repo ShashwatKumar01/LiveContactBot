@@ -34,6 +34,7 @@ from app.bot.master.superadmin import create_superadmin_router
 from app.bot.master.middleware import MasterMiddleware
 from app.services.bot_manager import BotManager
 from app.services.entitlement_service import EntitlementService
+from app.services.owner_alert_service import OwnerAlertService
 from app.workers.broadcast_worker import BroadcastWorker
 from app.web.app_factory import create_web_app
 
@@ -87,6 +88,8 @@ async def main() -> None:
         owner_repo=owner_repo,
     )
 
+    owner_alerts = OwnerAlertService(redis)
+
     bot_manager = BotManager(
         settings=settings,
         redis=redis,
@@ -96,6 +99,7 @@ async def main() -> None:
         msg_map_repo=msg_map_repo,
         broadcast_repo=broadcast_repo,
         app_settings=app_settings_repo,
+        owner_alerts=owner_alerts,
         entitlement=entitlement,
     )
 
@@ -132,6 +136,7 @@ async def main() -> None:
 
     me = await master_bot.get_me()
     logger.info("Master bot @%s started", me.username)
+    bot_manager.set_master_bot(master_bot)
 
     web_app = create_web_app(
         settings=settings,
@@ -144,6 +149,7 @@ async def main() -> None:
         broadcast_repo=broadcast_repo,
         subscription_repo=subscription_repo,
         app_settings_repo=app_settings_repo,
+        owner_alerts=owner_alerts,
     )
     bot_manager.attach_web_app(web_app)
     await bot_manager.start_all()

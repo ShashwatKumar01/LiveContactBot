@@ -19,7 +19,10 @@ def message_can_be_relayed(message: Message) -> bool:
 async def copy_message_to_chat(bot: Bot, message: Message, chat_id: int) -> int:
     """
     Deliver a copy of a message to another chat.
-    Uses send_copy (file_id + caption) first; falls back to copyMessage API.
+
+    Does not download media to this server — only Telegram API calls with
+    file_id (send_photo/send_document/…) or copyMessage by chat+message id.
+    Large files stay on Telegram; Railway bandwidth is not used for file bytes.
     """
     try:
         sent = await bot(message.send_copy(chat_id=chat_id))
@@ -33,10 +36,28 @@ async def copy_message_to_chat(bot: Bot, message: Message, chat_id: int) -> int:
             e,
         )
 
-    copied = await bot.copy_message(
-        chat_id=chat_id,
+    return await copy_ref_to_chat(
+        bot,
         from_chat_id=message.chat.id,
         message_id=message.message_id,
+        chat_id=chat_id,
+    )
+
+
+async def copy_ref_to_chat(
+    bot: Bot,
+    *,
+    from_chat_id: int,
+    message_id: int,
+    chat_id: int,
+    disable_notification: bool | None = None,
+) -> int:
+    """copyMessage by reference only (no file download on this server)."""
+    copied = await bot.copy_message(
+        chat_id=chat_id,
+        from_chat_id=from_chat_id,
+        message_id=message_id,
+        disable_notification=disable_notification,
     )
     return copied.message_id
 

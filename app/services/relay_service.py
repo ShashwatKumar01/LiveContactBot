@@ -6,6 +6,7 @@ from aiogram.types import Message
 from app.bot.telegram_utils import copy_message_to_chat, message_can_be_relayed
 from app.services.child_start_text import apply_user_template_vars
 from app.database.repositories import BotRepository, BotUserRepository, MessageMapRepository
+from app.services.owner_alert_service import OwnerAlertService
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +21,27 @@ class RelayService:
         self._bot_repo = bot_repo
         self._user_repo = user_repo
         self._msg_map_repo = msg_map_repo
+        self._owner_alerts: OwnerAlertService | None = None
+        self._master_bot: Bot | None = None
+
+    def set_owner_notifier(
+        self, owner_alerts: OwnerAlertService, master_bot: Bot
+    ) -> None:
+        self._owner_alerts = owner_alerts
+        self._master_bot = master_bot
+
+    async def _notify_delivery_failed(self, bot_doc: dict) -> None:
+        if not self._owner_alerts or not self._master_bot:
+            return
+        await self._owner_alerts.notify_once(
+            self._master_bot,
+            bot_doc["owner_id"],
+            bot_doc["bot_id"],
+            bot_doc.get("username") or "bot",
+            "delivery_failed",
+            "Users are messaging your bot but delivery to you failed. "
+            "Open your bot and send /start, or add the bot to your group with permission to post.",
+        )
 
     def _get_locale_string(self, bot_doc: dict, key: str, lang: str | None) -> str:
         locales = bot_doc.get("locales", {})
@@ -83,15 +105,18 @@ class RelayService:
                 )
             except TelegramForbiddenError:
                 logger.warning("Cannot send to admin chat %s for bot %s", dest, bot_id)
+                await self._notify_delivery_failed(bot_doc)
                 return False
 
         try:
+            # file_id / copyMessage only — no getFile or download on our host
             admin_msg_id = await copy_message_to_chat(bot, message, dest)
         except TelegramBadRequest as e:
             logger.error("Failed to copy message for bot %s: %s", bot_id, e)
             return False
         except TelegramForbiddenError:
             logger.warning("Forbidden copying to admin chat %s", dest)
+            await self._notify_delivery_failed(bot_doc)
             return False
 
         await self._msg_map_repo.create(

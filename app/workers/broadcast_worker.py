@@ -9,6 +9,7 @@ from app.core.crypto import decrypt_token
 from app.database.repositories import BotRepository, BotUserRepository, BroadcastRepository, OwnerRepository
 from app.bot.master.keyboards import broadcast_stop_kb
 from app.services.broadcast_progress import format_progress_text
+from app.bot.telegram_utils import copy_ref_to_chat
 from app.services.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -169,17 +170,19 @@ class BroadcastWorker:
                     )
                 elif payload and payload.get("type") == "multi_copy":
                     for item in payload.get("messages", []):
-                        await bot.copy_message(
-                            chat_id=rec["user_id"],
+                        await copy_ref_to_chat(
+                            bot,
                             from_chat_id=item["chat_id"],
                             message_id=item["message_id"],
+                            chat_id=rec["user_id"],
                             disable_notification=silent,
                         )
                 else:
-                    await bot.copy_message(
-                        chat_id=rec["user_id"],
+                    await copy_ref_to_chat(
+                        bot,
                         from_chat_id=job["source_chat_id"],
                         message_id=job["source_msg_id"],
+                        chat_id=rec["user_id"],
                         disable_notification=silent,
                     )
                 await self._broadcast_repo.mark_recipient(job_id, rec["user_id"], "sent")

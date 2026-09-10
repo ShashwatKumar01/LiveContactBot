@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from app.bot.master.keyboards import broadcast_audience_kb, bot_settings_kb, broadcast_stop_kb
 from app.services.broadcast_progress import format_progress_text
 from app.bot.master.states import BroadcastStates
-from app.bot.telegram_utils import safe_edit_text
+from app.bot.telegram_utils import copy_ref_to_chat, safe_edit_text
 from app.database.repositories import BotRepository, BroadcastRepository, BotUserRepository
 from app.services.entitlement_service import EntitlementService
 
@@ -177,10 +177,11 @@ def create_broadcast_router() -> Router:
             await message.answer("Nothing to preview yet.")
             return
         last = messages[-1]
-        await message.bot.copy_message(
-            chat_id=message.chat.id,
+        await copy_ref_to_chat(
+            message.bot,
             from_chat_id=last["chat_id"],
             message_id=last["message_id"],
+            chat_id=message.chat.id,
         )
 
     @router.message(BroadcastStates.composing)
