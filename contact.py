@@ -48,7 +48,9 @@ async def main() -> None:
     settings = get_settings()
 
     await db_manager.connect(settings.mongodb_uri, settings.mongodb_database)
-    if "railway.internal" in settings.mongodb_uri:
+    if settings.mongodb_uri.startswith("mongodb+srv://"):
+        logger.info("MongoDB: Atlas / SRV (%s)", settings.mongodb_database)
+    elif "railway.internal" in settings.mongodb_uri:
         logger.warning(
             "Using Railway internal MongoDB. If you see OutOfDiskSpace (14031), "
             "switch to MongoDB Atlas — see DEPLOY_ATLAS.md"
@@ -57,6 +59,14 @@ async def main() -> None:
     db = db_manager.db
 
     redis = Redis.from_url(settings.redis_url)
+    try:
+        await redis.ping()
+    except Exception as e:
+        logger.critical(
+            "Redis is required (FSM + child bots) but ping failed. Set REDIS_URL. %s",
+            e,
+        )
+        raise
     storage = RedisStorage(redis=redis)
 
     bot_repo = BotRepository(db)

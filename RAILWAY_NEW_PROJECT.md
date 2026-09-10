@@ -1,96 +1,41 @@
-# New Railway project + GitHub (LiveContactBot)
+# Railway layout (recommended)
 
-**Current CLI project (2026-09-10):** `LiveContactBot`  
-**Public URL:** https://contactbot-production-17b3.up.railway.app  
-**Project ID:** `b656f5dc-cd3e-4de1-96fc-a369c3584688`
+**Project:** `LiveContactBot`  
+**Public URL:** https://contactbot-production-17b3.up.railway.app
 
-Repo: **https://github.com/ShashwatKumar01/LiveContactBot.git**  
-Branch: **main** (already contains latest ContactBot code)
+## Services (2 only)
 
-### Free plan note (Redis)
+| Service | Role |
+|---------|------|
+| **contactbot** | App (Dockerfile / `contact.py`) |
+| **Redis** | FSM state + child-bot storage (**required**) |
 
-Railway **free** tier allows only **2 services** (here: `contactbot` + `MongoDB`). Adding **Redis** on Railway failed with *resource provision limit*. Use one of:
-
-1. **Upgrade** Railway plan → `railway add -d redis --json --verbose true` → set `REDIS_URL=${{Redis.REDIS_URL}}` on `contactbot`.
-2. **Upstash Redis** (free): create DB → `railway variable set REDIS_URL=rediss://... --service contactbot`
-3. **MongoDB Atlas** instead of Railway Mongo → delete Railway MongoDB service → add Railway Redis (still 2 services).
-
-## 1. Push code (local)
-
-```powershell
-cd d:\python\Telegrambots\ContactBot
-git remote -v
-# should show origin → ShashwatKumar01/LiveContactBot.git
-git push origin main
-```
-
-## 2. Railway project
-
-1. [railway.app](https://railway.app) → **New Project**.
-2. **Deploy from GitHub repo** → select **ShashwatKumar01/LiveContactBot** (install [Railway GitHub App](https://github.com/apps/railway-app) if asked).
-3. Branch: **main**. Root directory: **/** (repo root = ContactBot app).
-4. In the same project, click **+ New** → **Database** → **MongoDB** and **Redis** (or add from templates).
-
-## 3. ContactBot service variables
-
-Open your **app service** (not Mongo/Redis) → **Variables**. Use **Raw Editor** and paste (replace secrets):
+**Do not** add Railway MongoDB — use **MongoDB Atlas** on the app service:
 
 ```env
-MASTER_BOT_TOKEN=your_master_bot_token_from_botfather
-MONGODB_URI=mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://USER:PASS@cluster....mongodb.net/?retryWrites=true&w=majority
 MONGODB_DATABASE=ChatReplyBot
 REDIS_URL=${{Redis.REDIS_URL}}
-ENVIRONMENT=production
-WEBHOOK_PATH=/webhook/master
-WEBHOOK_SECRET=generate_a_long_random_string_here
-SUPER_ADMIN_IDS=your_telegram_user_id
-ADMIN_WEB_PASSWORD=choose_a_strong_password
-ADMIN_WEB_SECRET=another_long_random_string
-TOKEN_ENCRYPTION_KEY=optional_fernet_key_or_leave_empty_for_dev_only
-SKIP_DB_INDEXES=true
 ```
 
-**After first deploy:** **Settings** → **Networking** → **Generate domain** → copy `https://xxxx.up.railway.app` → add:
-
-```env
-WEBHOOK_HOST=https://xxxx.up.railway.app
-```
-
-(No trailing slash on `WEBHOOK_HOST`.)
-
-Redeploy once after setting `WEBHOOK_HOST`.
-
-> `${{MongoDB.MONGO_URL}}` and `${{Redis.REDIS_URL}}` must match the **service names** in your project. In Variables, use **Add Reference** and pick MongoDB / Redis if names differ.
-
-## 4. Mongo disk (Railway Mongo only)
-
-If the app crashes with Mongo error **14031** / out of disk: resize Mongo volume to **1 GB+** (Hobby) or use **[DEPLOY_ATLAS.md](DEPLOY_ATLAS.md)** and set `MONGODB_URI` to Atlas. Remove `SKIP_DB_INDEXES` when disk/indexes are healthy.
-
-## 5. Verify
-
-```text
-https://YOUR-DOMAIN.up.railway.app/health
-https://YOUR-DOMAIN.up.railway.app/admin
-```
-
-Telegram: master bot `/start`, `/addbot`.
-
-## 6. Auto-deploy
-
-With GitHub connected, every `git push origin main` redeploys automatically.
-
-### CLI (optional)
+## CLI setup
 
 ```powershell
-railway login
 cd d:\python\Telegrambots\ContactBot
-railway link
-railway up
+railway init --name LiveContactBot
+railway add --service contactbot
+railway add -d redis --json --verbose true
+railway service delete -s MongoDB -y   # if an old Mongo plugin exists
+railway service link contactbot
+railway variable set 'REDIS_URL=${{Redis.REDIS_URL}}' --service contactbot
+# Set MONGODB_URI, MONGODB_DATABASE, MASTER_BOT_TOKEN, WEBHOOK_*, etc.
+railway domain --service contactbot
+railway variable set WEBHOOK_HOST=https://YOUR-DOMAIN.up.railway.app --service contactbot
+railway up --service contactbot --detach
 ```
 
-Or connect repo:
+## GitHub auto-deploy
 
-```powershell
-railway service
-railway service source connect --repo ShashwatKumar01/LiveContactBot --branch main
-```
+Connect repo `ShashwatKumar01/LiveContactBot` branch `main` in Railway dashboard (GitHub App access required).
+
+See also [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md), [DEPLOY_ATLAS.md](DEPLOY_ATLAS.md), [BACKUP_MONGODB.md](BACKUP_MONGODB.md).
