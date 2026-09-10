@@ -4,7 +4,7 @@
 
 1. In [ContactBot](.) directory: `railway login` (if needed), then `railway init`.
 2. In Railway dashboard, add **MongoDB** and **Redis** to the same project.
-3. **MongoDB disk:** MongoDB requires at least **512 MB** free on its volume. If deploy logs show `OutOfDiskSpace` / `code 14031`, open the **MongoDB** service → **Volumes** → increase size (e.g. 1 GB), then redeploy **contactbot**.
+3. **MongoDB disk (required):** Railway’s default Mongo volume is **500 MB**, but MongoDB needs **≥ 512 MB free**, so the app crashes with `OutOfDiskSpace` / `code 14031`. Fix: **MongoDB** service → **Settings** → **Volume** → increase to **1024 MB (1 GB)** → save → redeploy **contactbot**.
 3. On the **ContactBot** service, set variables (see below). Reference plugin URLs, e.g. `${{MongoDB.MONGO_URL}}` — use the exact names Railway shows for your plugins.
 
 ## 2. Required variables (ContactBot service)

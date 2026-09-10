@@ -1,4 +1,11 @@
+import logging
+
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo.errors import OperationFailure
+
+logger = logging.getLogger(__name__)
+
+_MONGO_DISK_ERROR = 14031
 
 
 class DatabaseManager:
@@ -17,7 +24,19 @@ class DatabaseManager:
 
     async def create_indexes(self) -> None:
         db = self.db
+        try:
+            await self._create_indexes(db)
+        except OperationFailure as e:
+            if e.code == _MONGO_DISK_ERROR:
+                logger.critical(
+                    "MongoDB out of disk space (code %s). On Railway: open the MongoDB "
+                    "service → Settings → Volume → increase size to at least 1 GB (1024 MB), "
+                    "then redeploy contactbot.",
+                    _MONGO_DISK_ERROR,
+                )
+            raise
 
+    async def _create_indexes(self, db: AsyncIOMotorDatabase) -> None:
         await db.bots.create_index("bot_id", unique=True)
         await db.bots.create_index("owner_id")
         await db.bots.create_index([("owner_id", 1), ("username", 1)])
@@ -39,7 +58,6 @@ class DatabaseManager:
 
         await db.subscriptions.create_index("owner_id", unique=True)
         await db.subscriptions.create_index([("plan_id", 1), ("status", 1)])
-        await db.plans.create_index("_id", unique=True)
         await db.broadcast_recipients.create_index(
             [("job_id", 1), ("status", 1)]
         )
