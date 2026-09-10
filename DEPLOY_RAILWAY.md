@@ -39,7 +39,18 @@ cd ContactBot
 railway up
 ```
 
-Or connect GitHub for automatic deploys.
+### GitHub (recommended)
+
+Repo: [github.com/ShashwatKumar01/LiveContactBot](https://github.com/ShashwatKumar01/LiveContactBot)
+
+1. Install the [Railway GitHub App](https://github.com/apps/railway-app) and grant access to **LiveContactBot**.
+2. Railway dashboard → **contactbot** service → **Settings** → **Connect Repo** → `ShashwatKumar01/LiveContactBot`, branch **main**.
+3. Or CLI (after GitHub access is granted):
+   ```bash
+   railway service source connect --repo ShashwatKumar01/LiveContactBot --branch main --service contactbot
+   ```
+
+Pushes to `main` will auto-deploy.
 
 ## 5. Verify
 
