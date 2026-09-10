@@ -29,11 +29,14 @@ class DatabaseManager:
         except OperationFailure as e:
             if e.code == _MONGO_DISK_ERROR:
                 logger.critical(
-                    "MongoDB out of disk space (code %s). On Railway: open the MongoDB "
-                    "service → Settings → Volume → increase size to at least 1 GB (1024 MB), "
-                    "then redeploy contactbot.",
+                    "MongoDB out of disk space (code %s). Railway's 500 MB Mongo volume "
+                    "cannot satisfy Mongo's 512 MB free-space requirement. Fix: (1) Hobby plan "
+                    "→ MongoDB volume → Live Resize to 1024 MB+, or (2) use MongoDB Atlas M0 "
+                    "and set MONGODB_URI on contactbot (see DEPLOY_ATLAS.md). Continuing "
+                    "without indexes — use Atlas or resize volume for production.",
                     _MONGO_DISK_ERROR,
                 )
+                return
             raise
 
     async def _create_indexes(self, db: AsyncIOMotorDatabase) -> None:

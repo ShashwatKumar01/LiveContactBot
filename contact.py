@@ -47,6 +47,11 @@ async def main() -> None:
     settings = get_settings()
 
     await db_manager.connect(settings.mongodb_uri, settings.mongodb_database)
+    if "railway.internal" in settings.mongodb_uri:
+        logger.warning(
+            "Using Railway internal MongoDB. If you see OutOfDiskSpace (14031), "
+            "switch to MongoDB Atlas — see DEPLOY_ATLAS.md"
+        )
     await db_manager.create_indexes()
     db = db_manager.db
 
