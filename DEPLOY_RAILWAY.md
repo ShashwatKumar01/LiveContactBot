@@ -1,5 +1,8 @@
 # Deploy ContactBot on Railway
 
+**New Railway project?** Step-by-step: **[RAILWAY_NEW_PROJECT.md](RAILWAY_NEW_PROJECT.md)**  
+GitHub repo: https://github.com/ShashwatKumar01/LiveContactBot.git
+
 ## 1. Create project and services
 
 1. In [ContactBot](.) directory: `railway login` (if needed), then `railway init`.
