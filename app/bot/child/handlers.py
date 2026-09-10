@@ -1,6 +1,7 @@
 import logging
 
 from aiogram import Router, F, Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 def create_child_router() -> Router:
     router = Router()
 
-    @router.message(CommandStart())
+    @router.message(CommandStart(), F.chat.type == "private")
     async def cmd_start(
         message: Message,
         bot_doc: dict,
@@ -37,7 +38,11 @@ def create_child_router() -> Router:
         if await entitlement.shows_child_promo_branding(bot_doc["owner_id"]):
             footer = await app_settings.get_child_start_promo_footer()
             text = append_promo_footer(text, footer)
-        await message.answer(text)
+        try:
+            await message.answer(text, parse_mode="HTML")
+        except TelegramBadRequest:
+            logger.warning("Child /start HTML parse failed for bot %s", bot_doc["bot_id"])
+            await message.answer(text, parse_mode=None)
 
     @router.message(Command("broadcast"))
     async def cmd_broadcast(
@@ -84,7 +89,7 @@ def create_child_router() -> Router:
             progress_message_id=progress.message_id,
         )
 
-    @router.message(F.chat.type == "private")
+    @router.message(F.chat.type == "private", ~Command())
     async def handle_private_message(
         message: Message,
         bot: Bot,
@@ -111,6 +116,11 @@ def create_child_router() -> Router:
                     text = locales.get("en", DEFAULT_LOCALES["en"]).get("reply_sent", "")
                     if text:
                         await message.reply(text)
+            elif user_id == owner_id:
+                await message.answer(
+                    "Reply to a user's message (above) to answer them. "
+                    "Use /start to see the welcome text users get."
+                )
             return
 
         if user_id == owner_id:

@@ -115,7 +115,8 @@ class BotManager:
             await self.stop_bot(bot_id)
 
         token = decrypt_token(bot_doc["token_encrypted"], self._settings.token_encryption_key)
-        bot = Bot(token=token, default=DefaultBotProperties(parse_mode="HTML"))
+        # No default parse_mode — avoids breaking media captions on send_copy/send_photo
+        bot = Bot(token=token, default=DefaultBotProperties())
         me = await bot.get_me()
 
         storage = RedisStorage(

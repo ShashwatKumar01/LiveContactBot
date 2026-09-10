@@ -56,8 +56,8 @@ def setup_child_webhook_route(app: web.Application, bot_manager, settings) -> No
         async def process() -> None:
             try:
                 await dp.feed_webhook_update(bot, update)
-            except Exception as e:
-                logger.exception("Child bot %s webhook error: %s", bot_id, e)
+            except Exception:
+                logger.exception("Child bot %s webhook processing failed", bot_id)
                 bot_repo = request.app["bot_repo"]
                 bot_doc = await bot_repo.get_by_id(bot_id)
                 if bot_doc:

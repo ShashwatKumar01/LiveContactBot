@@ -1,4 +1,5 @@
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message
 
 from app.database.repositories import BotUserRepository
@@ -29,5 +30,9 @@ async def maybe_send_auto_reply(
     if cooldown > 0 and not await user_repo.should_send_auto_reply(bot_id, user_id, cooldown):
         return
 
-    await message.answer(apply_user_template_vars(text, message.from_user))
+    body = apply_user_template_vars(text, message.from_user)
+    try:
+        await message.answer(body, parse_mode="HTML")
+    except TelegramBadRequest:
+        await message.answer(body, parse_mode=None)
     await user_repo.mark_auto_reply_sent(bot_id, user_id)

@@ -94,7 +94,7 @@ class RelayService:
         header = self._user_header(message)
         if header:
             try:
-                header_msg = await bot.send_message(dest, header)
+                header_msg = await bot.send_message(dest, header, parse_mode="HTML")
                 await self._msg_map_repo.create(
                     bot_id=bot_id,
                     user_id=user.id,

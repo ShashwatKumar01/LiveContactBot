@@ -25,23 +25,25 @@ async def copy_message_to_chat(bot: Bot, message: Message, chat_id: int) -> int:
     Large files stay on Telegram; Railway bandwidth is not used for file bytes.
     """
     try:
-        sent = await bot(message.send_copy(chat_id=chat_id))
-        return sent.message_id
-    except TypeError:
-        logger.debug("send_copy unsupported for message_id=%s", message.message_id)
+        return await copy_ref_to_chat(
+            bot,
+            from_chat_id=message.chat.id,
+            message_id=message.message_id,
+            chat_id=chat_id,
+        )
     except TelegramBadRequest as e:
-        logger.debug(
-            "send_copy failed for message_id=%s (%s), trying copy_message",
+        logger.warning(
+            "copy_message failed for message_id=%s (%s), trying send_copy",
             message.message_id,
             e,
         )
 
-    return await copy_ref_to_chat(
-        bot,
-        from_chat_id=message.chat.id,
-        message_id=message.message_id,
-        chat_id=chat_id,
-    )
+    try:
+        sent = await bot(message.send_copy(chat_id=chat_id))
+        return sent.message_id
+    except TypeError:
+        logger.error("send_copy unsupported for message_id=%s", message.message_id)
+        raise
 
 
 async def copy_ref_to_chat(
