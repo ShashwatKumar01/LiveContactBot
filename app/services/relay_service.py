@@ -92,8 +92,10 @@ class RelayService:
 
         dest = self._admin_destination(bot_doc)
 
-        # Forward the message directly — Telegram shows native "Forwarded from [Name]"
-        # header automatically, just like Livegram. No separate header message needed.
+        # Try to forward natively (shows "Forwarded from [Name]" like Livegram).
+        # Falls back to copy_message + header if user has privacy settings that
+        # block forwarding (e.g. Telegram "Restrict Saving Content").
+        admin_msg_id: int | None = None
         try:
             admin_msg_id = await forward_message_to_chat(bot, message, dest)
         except TelegramForbiddenError:
@@ -101,8 +103,33 @@ class RelayService:
             await self._notify_delivery_failed(bot_doc)
             return False
         except TelegramBadRequest as e:
-            logger.error("Failed to forward message for bot %s: %s", bot_id, e)
-            return False
+            logger.warning(
+                "forward_message failed for bot %s (%s), falling back to copy+header", bot_id, e
+            )
+
+        if admin_msg_id is None:
+            # Fallback: send header + copy (user privacy blocks forwarding)
+            header = self._user_header(message)
+            if header:
+                try:
+                    header_msg = await bot.send_message(dest, header, parse_mode="HTML")
+                    await self._msg_map_repo.create(
+                        bot_id=bot_id,
+                        user_id=user.id,
+                        user_msg_id=message.message_id,
+                        admin_chat_id=dest,
+                        admin_msg_id=header_msg.message_id,
+                        direction="header",
+                    )
+                except TelegramForbiddenError:
+                    await self._notify_delivery_failed(bot_doc)
+                    return False
+            try:
+                admin_msg_id = await copy_message_to_chat(bot, message, dest)
+            except (TelegramForbiddenError, TelegramBadRequest) as e:
+                logger.error("copy_message fallback also failed for bot %s: %s", bot_id, e)
+                await self._notify_delivery_failed(bot_doc)
+                return False
 
         await self._msg_map_repo.create(
             bot_id=bot_id,
