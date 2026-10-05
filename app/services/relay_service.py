@@ -3,7 +3,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError, TelegramBadRequest
 from aiogram.types import Message
 
-from app.bot.telegram_utils import copy_message_to_chat, message_can_be_relayed
+from app.bot.telegram_utils import copy_message_to_chat, forward_message_to_chat, message_can_be_relayed
 from app.services.child_start_text import apply_user_template_vars
 from app.database.repositories import BotRepository, BotUserRepository, MessageMapRepository
 from app.services.owner_alert_service import OwnerAlertService
@@ -91,32 +91,17 @@ class RelayService:
             await self._bot_repo.increment_stat(bot_id, "total_users")
 
         dest = self._admin_destination(bot_doc)
-        header = self._user_header(message)
-        if header:
-            try:
-                header_msg = await bot.send_message(dest, header, parse_mode="HTML")
-                await self._msg_map_repo.create(
-                    bot_id=bot_id,
-                    user_id=user.id,
-                    user_msg_id=message.message_id,
-                    admin_chat_id=dest,
-                    admin_msg_id=header_msg.message_id,
-                    direction="header",
-                )
-            except TelegramForbiddenError:
-                logger.warning("Cannot send to admin chat %s for bot %s", dest, bot_id)
-                await self._notify_delivery_failed(bot_doc)
-                return False
 
+        # Forward the message directly — Telegram shows native "Forwarded from [Name]"
+        # header automatically, just like Livegram. No separate header message needed.
         try:
-            # file_id / copyMessage only — no getFile or download on our host
-            admin_msg_id = await copy_message_to_chat(bot, message, dest)
-        except TelegramBadRequest as e:
-            logger.error("Failed to copy message for bot %s: %s", bot_id, e)
-            return False
+            admin_msg_id = await forward_message_to_chat(bot, message, dest)
         except TelegramForbiddenError:
-            logger.warning("Forbidden copying to admin chat %s", dest)
+            logger.warning("Cannot forward to admin chat %s for bot %s", dest, bot_id)
             await self._notify_delivery_failed(bot_doc)
+            return False
+        except TelegramBadRequest as e:
+            logger.error("Failed to forward message for bot %s: %s", bot_id, e)
             return False
 
         await self._msg_map_repo.create(

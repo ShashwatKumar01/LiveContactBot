@@ -64,6 +64,24 @@ async def copy_ref_to_chat(
     return copied.message_id
 
 
+async def forward_message_to_chat(
+    bot: Bot,
+    message: Message,
+    chat_id: int,
+) -> int:
+    """
+    Forward a message to another chat using Telegram's forwardMessage API.
+    This shows the native 'Forwarded from [Name]' header — just like Livegram.
+    Returns the forwarded message's message_id.
+    """
+    forwarded = await bot.forward_message(
+        chat_id=chat_id,
+        from_chat_id=message.chat.id,
+        message_id=message.message_id,
+    )
+    return forwarded.message_id
+
+
 async def safe_edit_text(message: Message, text: str, **kwargs) -> None:
     try:
         await message.edit_text(text, **kwargs)
