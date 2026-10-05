@@ -150,6 +150,16 @@ class RelayService:
             user_msg_id = await copy_message_to_chat(bot, message, user_id)
         except TelegramForbiddenError:
             await self._user_repo.mark_blocked(bot_id, user_id)
+            # Notify admin that user has blocked the bot
+            try:
+                await bot.send_message(
+                    message.chat.id,
+                    "⚠️ <b>Message not delivered</b> — this user has blocked the bot.",
+                    parse_mode="HTML",
+                    reply_to_message_id=message.message_id,
+                )
+            except Exception:
+                pass
             return False
         except TelegramBadRequest as e:
             logger.error("Failed to relay reply for bot %s: %s", bot_id, e)
