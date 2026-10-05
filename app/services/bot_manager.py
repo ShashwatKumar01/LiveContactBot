@@ -117,7 +117,12 @@ class BotManager:
         token = decrypt_token(bot_doc["token_encrypted"], self._settings.token_encryption_key)
         # No default parse_mode — avoids breaking media captions on send_copy/send_photo
         bot = Bot(token=token, default=DefaultBotProperties())
-        me = await bot.get_me()
+        try:
+            me = await bot.get_me()
+        except Exception:
+            # Always close the aiohttp session to avoid "Unclosed client session" warnings
+            await bot.session.close()
+            raise
 
         storage = RedisStorage(
             redis=self._redis,
