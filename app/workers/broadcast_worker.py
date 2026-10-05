@@ -57,6 +57,10 @@ class BroadcastWorker:
         if target == "all_owners":
             owners = await self._owner_repo.get_all(skip=0, limit=1_000_000)
             return [o["telegram_id"] for o in owners]
+        if target == "owners_with_bots":
+            return await self._bot_repo.get_owner_ids_with_active_bots()
+        if target == "owners_disconnected":
+            return await self._bot_repo.get_owner_ids_disconnected_only()
         if target == "all_users":
             return await self._user_repo.get_distinct_owner_user_ids()
 

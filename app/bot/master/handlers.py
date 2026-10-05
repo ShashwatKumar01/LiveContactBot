@@ -584,6 +584,8 @@ def create_master_router() -> Router:
         )
         await safe_edit_text(callback.message, text, reply_markup=bot_settings_kb(bot_doc))
 
+    from app.bot.master.stars_payment import create_stars_payment_router
+    router.include_router(create_stars_payment_router())
     router.include_router(create_broadcast_router())
     router.include_router(create_broadcast_stop_router())
     return router

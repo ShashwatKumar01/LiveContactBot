@@ -108,9 +108,83 @@ async def owners_page(request: web.Request) -> web.Response:
 
 async def bots_page(request: web.Request) -> web.Response:
     bot_repo = request.app["bot_repo"]
-    bots = await bot_repo.get_all(skip=0, limit=200)
+    owner_repo = request.app["owner_repo"]
+    subscription_repo = request.app["subscription_repo"]
+    settings = request.app["settings"]
+
+    from app.core.crypto import decrypt_token
+    from datetime import datetime
+
+    search = request.rel_url.query.get("search", "").strip().lower()
+    status_filter = request.rel_url.query.get("status", "")  # active, disconnected, disabled, ""
+    plan_filter = request.rel_url.query.get("plan", "")  # pro, free, ""
+    sort = request.rel_url.query.get("sort", "created_at")  # created_at, users, username
+
+    bots = await bot_repo.get_all(skip=0, limit=500)
+    enriched = []
+    for b in bots:
+        # Apply filters
+        if status_filter and b.get("status") != status_filter:
+            continue
+        if search:
+            uname = (b.get("username") or "").lower()
+            owner_id_str = str(b.get("owner_id", ""))
+            if search not in uname and search not in owner_id_str:
+                continue
+
+        # Owner info
+        owner = await owner_repo.get(b["owner_id"]) or {}
+        owner_name_parts = []
+        if owner.get("first_name"):
+            owner_name_parts.append(owner["first_name"])
+        if owner.get("last_name"):
+            owner_name_parts.append(owner["last_name"])
+        owner_name = " ".join(owner_name_parts) or "Unknown"
+        owner_username = owner.get("username", "")
+
+        # Plan
+        plan_id = await subscription_repo.get_owner_plan_id(b["owner_id"])
+        if plan_filter == "pro" and plan_id != "PREMIUM":
+            continue
+        if plan_filter == "free" and plan_id == "PREMIUM":
+            continue
+
+        # Token (masked)
+        try:
+            raw_token = decrypt_token(b["token_encrypted"], settings.token_encryption_key)
+            masked_token = raw_token[:10] + "..." + raw_token[-4:]
+        except Exception:
+            masked_token = "(error)"
+
+        enriched.append({
+            **b,
+            "owner_name": owner_name,
+            "owner_username": owner_username,
+            "plan_id": plan_id,
+            "masked_token": masked_token,
+        })
+
+    # Sort
+    if sort == "users":
+        enriched.sort(key=lambda x: (x.get("stats") or {}).get("total_users", 0), reverse=True)
+    elif sort == "username":
+        enriched.sort(key=lambda x: (x.get("username") or "").lower())
+    else:
+        enriched.sort(key=lambda x: x.get("created_at") or datetime.min, reverse=True)
+
     flash = request.rel_url.query.get("flash", "")
-    return render_template("bots.html", request, {"bots": bots, "flash": flash})
+    return render_template(
+        "bots.html",
+        request,
+        {
+            "bots": enriched,
+            "flash": flash,
+            "search": search,
+            "status_filter": status_filter,
+            "plan_filter": plan_filter,
+            "sort": sort,
+        },
+    )
 
 
 async def premium_page(request: web.Request) -> web.Response:
@@ -123,6 +197,9 @@ async def premium_page(request: web.Request) -> web.Response:
 async def broadcast_page(request: web.Request) -> web.Response:
     owner_repo = request.app["owner_repo"]
     user_repo = request.app["user_repo"]
+    bot_repo = request.app["bot_repo"]
+    owners_with_bots_count = len(await bot_repo.get_owner_ids_with_active_bots())
+    owners_disconnected_count = len(await bot_repo.get_owner_ids_disconnected_only())
     flash = request.rel_url.query.get("flash", "")
     error = request.rel_url.query.get("error", "")
     return render_template(
@@ -131,6 +208,8 @@ async def broadcast_page(request: web.Request) -> web.Response:
         {
             "owner_count": await owner_repo.count(),
             "user_count": len(await user_repo.get_distinct_owner_user_ids()),
+            "owners_with_bots_count": owners_with_bots_count,
+            "owners_disconnected_count": owners_disconnected_count,
             "flash": flash,
             "error": error,
         },

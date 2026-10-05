@@ -112,6 +112,18 @@ async def main() -> None:
     )
     worker_task = asyncio.create_task(broadcast_worker.start())
 
+    async def subscription_expiry_task(repo):
+        while True:
+            try:
+                count = await repo.expire_overdue_subscriptions()
+                if count:
+                    logger.info("Expired %d subscriptions", count)
+            except Exception as e:
+                logger.error("Expiry task error: %s", e)
+            await asyncio.sleep(3600)
+
+    expiry_task = asyncio.create_task(subscription_expiry_task(subscription_repo))
+
     master_bot = Bot(
         token=settings.master_bot_token,
         default=DefaultBotProperties(parse_mode="HTML"),
@@ -187,8 +199,13 @@ async def main() -> None:
     finally:
         broadcast_worker.stop()
         worker_task.cancel()
+        expiry_task.cancel()
         try:
             await worker_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await expiry_task
         except asyncio.CancelledError:
             pass
         await bot_manager.shutdown()

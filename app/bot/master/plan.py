@@ -32,9 +32,14 @@ def create_plan_router() -> Router:
             "• Unlimited broadcasts\n"
             "• No branding on /start\n"
             "• Priority support\n\n"
-            "<i>Payment integration coming soon. "
-            "Contact support to upgrade manually for now.</i>"
+            "<i>Payment via Stars is supported.</i>"
         )
-        await message.answer(text)
+        
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        markup = InlineKeyboardMarkup(inline_keyboard=[[
+            InlineKeyboardButton(text="Buy Pro — 100 ⭐ Stars", callback_data="buy_pro_stars")
+        ]])
+        
+        await message.answer(text, reply_markup=markup)
 
     return router

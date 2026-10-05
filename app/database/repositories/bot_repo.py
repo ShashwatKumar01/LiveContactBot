@@ -153,3 +153,14 @@ class BotRepository:
             "outgoing": row.get("outgoing", 0),
             "users": row.get("users", 0),
         }
+
+    async def get_owner_ids_with_active_bots(self) -> list[int]:
+        """Return distinct owner_ids who have at least one active bot."""
+        return await self._col.distinct("owner_id", {"status": "active"})
+
+    async def get_owner_ids_disconnected_only(self) -> list[int]:
+        """Return owner_ids who have disconnected bots but NO active bots."""
+        active_owners = set(await self.get_owner_ids_with_active_bots())
+        disconnected_owners = set(await self._col.distinct("owner_id", {"status": "disconnected"}))
+        return list(disconnected_owners - active_owners)
+

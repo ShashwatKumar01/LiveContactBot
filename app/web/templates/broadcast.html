@@ -19,7 +19,9 @@
 <form method="POST" action="/admin/broadcast">
   <label>Target audience</label>
   <select name="target" required>
-    <option value="all_owners">All bot owners ({{ owner_count }})</option>
+    <option value="all_owners">All users who started the bot ({{ owner_count }})</option>
+    <option value="owners_with_bots">Users with connected bots ({{ owners_with_bots_count }})</option>
+    <option value="owners_disconnected">Users with disconnected bots only ({{ owners_disconnected_count }})</option>
     <option value="all_users">All end-users across all bots ({{ user_count }})</option>
   </select>
   <label>Message (HTML supported)</label>

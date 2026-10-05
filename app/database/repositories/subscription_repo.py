@@ -28,11 +28,12 @@ class SubscriptionRepository:
             },
             {
                 "_id": "PREMIUM",
-                "name": "Premium",
+                "name": "Pro",
                 "max_bots": 50,
                 "broadcasts_per_day": -1,
-                "price_inr": 299,
-                "price_display": "₹299/month",
+                "price_inr": 50,
+                "price_stars": 100,
+                "price_display": "₹50/month or 100 ⭐/month",
                 "features": [
                     "Up to 50 contact bots",
                     "Unlimited broadcasts",
@@ -78,6 +79,8 @@ class SubscriptionRepository:
         plan_id: str = "PREMIUM",
         days: int | None = None,
         granted_by: int | None = None,
+        payment_method: str = "manual",
+        payment_charge_id: str | None = None,
     ) -> dict:
         now = datetime.now(timezone.utc)
         expires_at = None
@@ -91,7 +94,8 @@ class SubscriptionRepository:
             "status": "active",
             "expires_at": expires_at,
             "granted_by": granted_by,
-            "payment_method": "manual",
+            "payment_method": payment_method,
+            "payment_charge_id": payment_charge_id,
             "updated_at": now,
         }
         result = await self._subs.find_one_and_update(
@@ -131,3 +135,16 @@ class SubscriptionRepository:
     async def get_all_subscriptions(self, skip: int = 0, limit: int = 50) -> list[dict]:
         cursor = self._subs.find({"status": "active"}).sort("updated_at", -1).skip(skip).limit(limit)
         return await cursor.to_list(length=limit)
+
+    async def expire_overdue_subscriptions(self) -> int:
+        """Mark subscriptions whose expires_at has passed as 'expired'. Returns count updated."""
+        now = datetime.now(timezone.utc)
+        result = await self._subs.update_many(
+            {
+                "status": "active",
+                "expires_at": {"$ne": None, "$lte": now},
+            },
+            {"$set": {"status": "expired", "updated_at": now}},
+        )
+        return result.modified_count
+

@@ -15,19 +15,75 @@
 {% block content %}
 <h1>All Bots</h1>
 {% if flash %}<div class="alert alert-success">{{ flash }}</div>{% endif %}
+
+<form method="GET" action="/admin/bots" style="background:none;border:none;padding:0;max-width:100%;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+  <div style="flex:1;min-width:180px;">
+    <label>Search (username / owner ID)</label>
+    <input type="text" name="search" value="{{ search }}" placeholder="Search..." style="margin-bottom:0;">
+  </div>
+  <div>
+    <label>Status</label>
+    <select name="status" style="margin-bottom:0;width:auto;">
+      <option value="" {% if not status_filter %}selected{% endif %}>All</option>
+      <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active</option>
+      <option value="disconnected" {% if status_filter == 'disconnected' %}selected{% endif %}>Disconnected</option>
+      <option value="disabled" {% if status_filter == 'disabled' %}selected{% endif %}>Disabled</option>
+    </select>
+  </div>
+  <div>
+    <label>Plan</label>
+    <select name="plan" style="margin-bottom:0;width:auto;">
+      <option value="" {% if not plan_filter %}selected{% endif %}>All</option>
+      <option value="pro" {% if plan_filter == 'pro' %}selected{% endif %}>Pro</option>
+      <option value="free" {% if plan_filter == 'free' %}selected{% endif %}>Free</option>
+    </select>
+  </div>
+  <div>
+    <label>Sort</label>
+    <select name="sort" style="margin-bottom:0;width:auto;">
+      <option value="created_at" {% if sort == 'created_at' %}selected{% endif %}>Newest</option>
+      <option value="users" {% if sort == 'users' %}selected{% endif %}>Most Users</option>
+      <option value="username" {% if sort == 'username' %}selected{% endif %}>Username A-Z</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary">Apply</button>
+  <a href="/admin/bots" class="btn btn-outline">Reset</a>
+</form>
+
 <table>
-  <thead><tr><th>Bot</th><th>ID</th><th>Owner</th><th>Users</th><th>Status</th><th>Actions</th></tr></thead>
+  <thead><tr>
+    <th>Bot</th>
+    <th>Bot ID</th>
+    <th>Owner</th>
+    <th>Users</th>
+    <th>Plan</th>
+    <th>Status</th>
+    <th>Token</th>
+    <th>Actions</th>
+  </tr></thead>
   <tbody>
   {% for b in bots %}
   <tr>
-    <td>@{{ b.username }}</td>
+    <td><b>@{{ b.username }}</b></td>
     <td><code>{{ b.bot_id }}</code></td>
-    <td><code>{{ b.owner_id }}</code></td>
+    <td>
+      <div><b>{{ b.owner_name }}</b>{% if b.owner_username %} <span style="color:var(--muted)">@{{ b.owner_username }}</span>{% endif %}</div>
+      <div style="color:var(--muted);font-size:12px;"><code>{{ b.owner_id }}</code></div>
+    </td>
     <td>{{ b.stats.total_users if b.stats else 0 }}</td>
     <td>
+      {% if b.plan_id == 'PREMIUM' %}
+        <span class="badge badge-orange">Pro ⭐</span>
+      {% else %}
+        <span class="badge" style="background:#1a1d27;color:var(--muted);">Free</span>
+      {% endif %}
+    </td>
+    <td>
       {% if b.status == 'active' %}<span class="badge badge-green">Active</span>
+      {% elif b.status == 'disconnected' %}<span class="badge badge-red">Disconnected</span>
       {% else %}<span class="badge badge-red">{{ b.status }}</span>{% endif %}
     </td>
+    <td><code style="font-size:11px;color:var(--muted);">{{ b.masked_token }}</code></td>
     <td class="actions">
       <a href="/admin/bots/{{ b.bot_id }}/messages" class="btn btn-outline btn-sm">Messages</a>
       {% if b.status == 'active' %}
