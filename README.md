@@ -19,7 +19,7 @@
   <b>Let followers, community members, and customers chat with you on Telegram directly through your own custom bot without ever revealing your personal phone number or private account.</b>
 </p>
 
-[🚀 Create Your Bot Now](https://t.me/ReplyDmBot) • [📢 Join Updates Channel](https://t.me/AutoForwarderUpdates) • [💬 Contact Support](https://t.me/woxic_01)
+[🚀 Create Your Bot Now](https://t.me/ReplyDmBot) • [📢 Join Updates Channel](https://t.me/BotsXP) 
 
 ---
 
@@ -126,8 +126,8 @@ Share your new bot's link (`t.me/YourBotName`) with your channel audience. When 
 ## 📢 Stay Connected & Support
 
 - 🤖 **Master Builder Bot**: [@ReplyDmBot](https://t.me/ReplyDmBot)
-- 📢 **Updates Channel**: [@AutoForwarderUpdates](https://t.me/AutoForwarderUpdates)
-- 💬 **24/7 Support**: [@woxic_01](https://t.me/woxic_01)
+- 📢 **Updates Channel**: [@BotsXP](https://t.me/BotsXP)
+
 
 ---
 
