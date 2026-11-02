@@ -4,8 +4,8 @@
 ### The Best Open-Source Livegram Alternative — Create Your Own Telegram Contact & Feedback Bots
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram_Bot-@ReplyDmBot-blue?style=for-the-badge&logo=telegram)](https://t.me/ReplyDmBot)
-[![Updates Channel](https://img.shields.io/badge/Updates_Channel-@AutoForwarderUpdates-0088cc?style=for-the-badge&logo=telegram)](https://t.me/AutoForwarderUpdates)
-[![24/7 Support](https://img.shields.io/badge/Support-@woxic__01-26A5E4?style=for-the-badge&logo=telegram)](https://t.me/woxic_01)
+[![Updates Channel](https://img.shields.io/badge/Updates_Channel-@BotsXP-0088cc?style=for-the-badge&logo=telegram)](https://t.me/BotsXP)
+
 
 <br/>
 
