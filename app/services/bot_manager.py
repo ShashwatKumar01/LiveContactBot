@@ -189,6 +189,7 @@ class BotManager:
 
     async def _poll(self, instance: ChildBotInstance) -> None:
         try:
+            await instance.bot.delete_webhook(drop_pending_updates=False)
             await instance.dispatcher.start_polling(
                 instance.bot,
                 handle_signals=False,

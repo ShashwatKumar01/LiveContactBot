@@ -195,6 +195,7 @@ async def main() -> None:
             await shutdown_event.wait()
         else:
             logger.info("Polling mode (development)")
+            await master_bot.delete_webhook(drop_pending_updates=False)
             await master_dp.start_polling(master_bot, handle_signals=True)
     finally:
         broadcast_worker.stop()
